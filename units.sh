@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# (C) 
-# Sample code available on www.linux-tips-and-tricks.de
+# Converts a number in gibibits. Example: 1024 -> 1K, 1073741825 -> 1T
+#
+# (C) 2016 framp at linux-stips-and-tricks dot de
+#
 
 function convertToMetric() { # number
 

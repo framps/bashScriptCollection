@@ -1,6 +1,6 @@
 #!/bin/bash
-# findPi:
-#       Find all active Raspi's on the LAN
+#
+#   Find all active Raspi's on the LAN
 #
 #	2017/01/24 - framp 
 

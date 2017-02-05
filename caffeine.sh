@@ -13,7 +13,7 @@ set -e -o pipefail -o errtrace
 
 PROGRAMS_TO_WATCH=( "kaffeine" "foo" "bar" )
 
-DEBUG=1
+DEBUG=0
 SCREENSAVER_TIMEOUT=$(gsettings get org.mate.session idle-delay)
 (( $DEBUG )) && echo "Timeout: $SCREENSAVER_TIMEOUT"
 WATCHER_TIMEOUT=$(( SCREENSAVER_TIMEOUT / 2 ))
