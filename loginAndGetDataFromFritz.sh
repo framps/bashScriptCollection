@@ -25,8 +25,7 @@ if [[ -z $challenge ]]; then
 fi
 
 challenge_bf="$challenge-$PASSWORD"
-challenge_bf=$(echo -n $challenge_bf | iconv -f ISO8859-1 -t UTF-16LE | md5sum -b)
-challenge_bf=$(echo $challenge_bf | sed "s/ .*$//")
+challenge_bf=$(echo -n $challenge_bf | iconv -t UTF-16LE | md5sum - | cut -c 1-32)
 response_bf="$challenge-$challenge_bf"
 
 url="http://$SERVER/login_sid.lua"
