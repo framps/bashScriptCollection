@@ -7,4 +7,4 @@ A collection of bashscripts I wrote which may or may not be useful for others :-
 4. figlet_variation.sh - Display text in any possible figlet fonts
 5. loginAndGetDataFromFritz.sh - bash prototype to login into AVM fritzbox and retrieve some data. [See here](https://github.com/framps/pythonScriptCollection) for a Python version and [here](https://github.com/framps/golang_tutorial/tree/master/loginFritz) for a go version.
 6. watchFileChange.sh - Watch a file for any changes and start actions if file changes
-7. bachCommandParser.sh - Parses command flags as -x and -x+ as true and -x- as false and accepts --log_options_with_args
+7. bachCommandParser.sh - Parses command flags `-x` and `-x+` as true and `-x-` as false and accepts --log_options_with_args
