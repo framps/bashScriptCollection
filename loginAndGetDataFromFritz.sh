@@ -2,8 +2,8 @@
 
 #######################################################################################################################
 #
-#    Python prototype which logs on to a Fritz AVM 7390 and 
-#    extracts the number of sent and received bytes of 
+#    Python prototype which logs on to a Fritz AVM 7390 and
+#    extracts the number of sent and received bytes of
 #    today, yesterday, last week and last month
 #
 #    Visit https://github.com/framps/bashScriptCollection for latest code and other details
@@ -33,7 +33,7 @@ PASSWORD="password"
 challengeRsp=$(curl --header "Accept: application/xml" \
 	--header "Content-Type: text/plain"		\
 	"http://$SERVER/login_sid.lua" 2>/dev/null)
-	
+
 challenge=$(echo $challengeRsp | sed "s/^.*<Challenge>//" | sed "s/<\/Challenge>.*$//")
 
 if [[ -z $challenge ]]; then
@@ -51,7 +51,7 @@ sidRsp=$(curl --header "Accept: text/html,application/xhtml+xml,application/xml"
 	--header "Content-Type: application/x-www-form-urlencoded"		\
 	-d "response=$response_bf" \
 	$url 2>/dev/null)
-	
+
 sid=$(echo $sidRsp | sed "s/^.*<SID>//" | sed "s/<\/SID>.*$//")
 
 regex="^0+$"
