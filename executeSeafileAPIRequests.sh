@@ -7,7 +7,7 @@
 #	 Can be used to to test seafile API throtteling by using invalid credentials and executing the script in an endless loop.
 #	 Just set invalid credentials and execute
 #
-#    while :; do ./seafileAPIRequests.sh; done
+#    while :; do ./executeSeafileAPIRequests.sh; done
 #
 #	 Using valid credentials will display the API results with jq
 #
