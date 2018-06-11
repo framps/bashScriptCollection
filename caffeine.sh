@@ -1,13 +1,31 @@
 #!/bin/bash
-
+#######################################################################################################################
+#
 # Small script which deactivates screensaver if any configured programs are up and running
 # Environment: Mint 18.1 running Mate
 #
 # Kudos for Z-App from www.linuxmintusers.de who figured out how to enable and disable the screensaver in mate
 #
 # Just start in your .bashrc this script in the background and update the screensaver timeout
-# 
-# framp - 2017/01/24
+#
+#######################################################################################################################
+#
+#    Copyright (C) 2017 framp at linux-tips-and-tricks dot de
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+#######################################################################################################################
 
 set -e -o pipefail -o errtrace
 
@@ -18,7 +36,7 @@ SCREENSAVER_TIMEOUT=$(gsettings get org.mate.session idle-delay)
 (( $DEBUG )) && echo "Timeout: $SCREENSAVER_TIMEOUT"
 WATCHER_TIMEOUT=$(( SCREENSAVER_TIMEOUT / 2 ))
 
-function screensaver_off() {	
+function screensaver_off() {
 	if (( $screensaver_status )); then
 		(( $DEBUG )) && echo "Turning screensaver off"
 		screensaver_status=0
@@ -49,7 +67,7 @@ while :; do
 	done
 	if (( $hit )); then
 		screensaver_off
-	else 
+	else
 		screensaver_on
 	fi
 	sleep ${WATCHER_TIMEOUT}m
