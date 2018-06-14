@@ -102,4 +102,7 @@ expect 200
 executeRequest "/api2/account/info/" "$TOKEN"
 expect 200
 jq '.' <<< "$HTTP_BODY"
+executeRequest "/api2/accounts/" "$TOKEN"
+expect 200
+jq '.' <<< "$HTTP_BODY"
 
