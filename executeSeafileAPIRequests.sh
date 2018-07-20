@@ -63,11 +63,13 @@ function expect() { # expected valid http status codes
 
 function executeRequest() { # API endpoint, creds
 
-	echo "Executing ${SF_URL}$1"
+	echo -n "Executing ${SF_URL}$1 : "
 	case $2 in
-		u) AUTH=( -d "username=$SF_USER&password=$SF_PASSWORD" );;		# user auth
-		n) ;;															# no auth
-		*) AUTH=( -H "Authorization: Token $2" );;						# token auth
+		u) AUTH=( -d "username=$SF_USER&password=$SF_PASSWORD" )
+			echo "PASSWORD AUTH";;										# user auth
+		n) 	echo "NO AUTH";;										#no auth
+		*) AUTH=( -H "Authorization: Token $2" )						# token auth
+			echo "TOKEN AUTH";;
 	esac
 
 	HTTP_RESPONSE="$(curl "${AUTH[@]}" --silent --write-out "HTTPSTATUS:%{http_code}" https://${SF_URL}$1)"
