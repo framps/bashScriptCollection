@@ -4,7 +4,7 @@
 #
 # 	 Execue some API requests against seafile server using uid & token authorization
 #
-#	 Can be used to to test seafile API throtteling by using invalid credentials and executing the script in an endless loop.
+#	 Can be used to test seafile API throtteling by using invalid credentials and executing the script in an endless loop.
 #	 Just set invalid credentials and execute
 #
 #    while :; do ./executeSeafileAPIRequests.sh; done
@@ -33,17 +33,17 @@
 function checkPrerequ() {
 
 	if [[ -z "$SF_USER" ]]; then
-		echo 'Missing export SF_USER="email, e.g foo@bar.com"'
+		echo 'Missing export SF_USER="email", e.g foo@bar.com'
 		exit 42
 	fi
 
 	if [[ -z "$SF_PASSWORD" ]]; then
-		echo 'Missing export SF_PASSWORD="password, e.g V3ry53cur3P455w0rd"'
+		echo 'Missing export SF_PASSWORD="password", e.g V3ry53cur3P455w0rd'
 		exit 42
 	fi
 
 	if [[ -z "$SF_URL" ]]; then
-		echo 'Missing export SF_URL="seafileurl, e.g myseafile.foo.com"'
+		echo 'Missing export SF_URL="seafileurl", e.g myseafile.foo.com'
 		exit 42
 	fi
 
@@ -53,7 +53,7 @@ function checkPrerequ() {
 	fi
 
 }
-function expect() { # http status codes
+function expect() { # expected valid http status codes
 	for s in "$@"; do
 		(( HTTP_STATUS == s )) && return
 	done
@@ -64,15 +64,15 @@ function expect() { # http status codes
 function executeRequest() { # API endpoint, creds
 
 	echo "Executing ${SF_URL}$1"
-	if [[ $2 == 1 ]]; then
-		HTTP_RESPONSE="$(curl -d "username=$SF_USER&password=$SF_PASSWORD" --silent --write-out "HTTPSTATUS:%{http_code}" https://${SF_URL}$1)"
-	elif [[ $2 != 0 ]]; then
-		HTTP_RESPONSE="$(curl -H "Authorization: Token $2" --silent --write-out "HTTPSTATUS:%{http_code}" https://${SF_URL}$1)"
-	else
-		HTTP_RESPONSE="$(curl --silent --write-out "HTTPSTATUS:%{http_code}" https://${SF_URL}$1)"
-	fi
-	HTTP_BODY=$(echo "$HTTP_RESPONSE" | sed -e 's/HTTPSTATUS\:.*//g')
-	HTTP_STATUS=$(echo $HTTP_RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+	case $2 in
+		u) AUTH=( -d "username=$SF_USER&password=$SF_PASSWORD" );;		# user auth
+		n) ;;															# no auth
+		*) AUTH=( -H "Authorization: Token $2" );;						# token auth
+	esac
+
+	HTTP_RESPONSE="$(curl "${AUTH[@]}" --silent --write-out "HTTPSTATUS:%{http_code}" https://${SF_URL}$1)"
+	HTTP_BODY=$(sed -e 's/HTTPSTATUS\:.*//g' <<< "$HTTP_RESPONSE")
+	HTTP_STATUS=$(tr -d '\n'  <<< "$HTTP_RESPONSE" | sed -e 's/.*HTTPSTATUS://')
 	echo "Status $HTTP_STATUS"
 }
 
@@ -81,17 +81,17 @@ checkPrerequ
 echo "Using seafile $SF_URL"
 echo "Using user $SF_USER"
 
-executeRequest "/api2/server-info/" 0
+executeRequest "/api2/server-info/" n
 expect 200
 jq '.' <<< $HTTP_BODY
 VERSION=$(jq -r '.version' <<< $HTTP_BODY)
 echo "Seafile server version: $VERSION"
 
-executeRequest "/api2/ping/" 0
+executeRequest "/api2/ping/" n
 expect 200
 echo "$HTTP_BODY"
 
-executeRequest "/api2/auth-token/" 1
+executeRequest "/api2/auth-token/" u
 expect 200
 TOKEN=$(jq -r '.token' <<< "$HTTP_BODY")
 echo "Got access token $TOKEN"
