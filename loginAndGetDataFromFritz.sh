@@ -2,7 +2,7 @@
 
 #######################################################################################################################
 #
-#    Python prototype which logs on to a Fritz AVM 7390 and
+#    bash prototype which logs on to a Fritz AVM 7390 and
 #    extracts the number of sent and received bytes of
 #    today, yesterday, last week and last month
 #
