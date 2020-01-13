@@ -2,9 +2,9 @@
 
 #######################################################################################################################
 #
-# Sample code which listens for a file contents change
-# and depending on the new contents triggers an action
-#
+# 	Sample code which listens for a file contents change
+# 	and depending on the new contents triggers an action
+##
 #######################################################################################################################
 #
 #    Copyright (C) 2017 framp at linux-tips-and-tricks dot de

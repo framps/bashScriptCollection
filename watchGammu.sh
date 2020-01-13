@@ -4,6 +4,9 @@
 # 	Sample code for a SMS relay server with gammu
 #   Script listens for SMS received and forwards them to another phone number
 #
+#	This script is referred by https://www.linux-tips-and-tricks.de/en/raspberry/559-use-zte-ml190-usb-pen-drive-to-create-a-sms-relay-server
+#	which explains in detail how to create a SMS relay server
+#
 #######################################################################################################################
 #
 #    Copyright (c) 2020 framp at linux-tips-and-tricks dot de
