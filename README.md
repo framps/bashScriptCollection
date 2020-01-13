@@ -1,3 +1,5 @@
+![](https://img.shields.io/github/last-commit/framps/bashScriptCollection.svg?style=flat)
+
 # bashScriptCollection
 A collection of bashscripts I wrote which may or may not be useful for others :-)
 
