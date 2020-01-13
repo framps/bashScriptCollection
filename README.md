@@ -11,3 +11,4 @@ A collection of bashscripts I wrote which may or may not be useful for others :-
 6. scan4ActiveRaspisInNetwork.sh - Scans the local network for active Raspberries
 7. units.sh - Converts a number in gibibits. Example: 1024 -> 1K, 1073741825 -> 1T
 8. watchFileChange.sh - Watch a file for any changes and start actions if file changes
+9. watchGammu.sh - Tiny SMS relay server which reads all SMS received with gammu and forwards them to another phonenumber
