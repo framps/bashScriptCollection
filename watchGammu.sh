@@ -45,7 +45,7 @@ else
                 exit 0
           fi
           src_phone_number="$(cut -d _ -f 4 <<< "$file")"
-          gammu-smsd-inject TEXT $TARGET_PHONE <<< "$src_phone_number $msg"
+          echo "$src_phone_number $msg" | gammu-smsd-inject TEXT $TARGET_PHONE
       done
 fi
 
