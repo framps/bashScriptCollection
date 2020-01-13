@@ -33,22 +33,22 @@
 function checkPrerequ() {
 
 	if [[ -z "$SF_USER" ]]; then
-		echo 'Missing export SF_USER="email", e.g foo@bar.com'
+		echo '??? Missing export SF_USER="email", e.g foo@bar.com'
 		exit 42
 	fi
 
 	if [[ -z "$SF_PASSWORD" ]]; then
-		echo 'Missing export SF_PASSWORD="password", e.g V3ry53cur3P455w0rd'
+		echo '??? Missing export SF_PASSWORD="password", e.g V3ry53cur3P455w0rd'
 		exit 42
 	fi
 
 	if [[ -z "$SF_URL" ]]; then
-		echo 'Missing export SF_URL="seafileurl", e.g myseafile.foo.com'
+		echo '??? Missing export SF_URL="seafileurl", e.g myseafile.foo.com'
 		exit 42
 	fi
 
 	if ! which jq; then
-		echo "Missing jq"
+		echo "??? Missing jq"
 		exit 42
 	fi
 
@@ -57,7 +57,7 @@ function expect() { # expected valid http status codes
 	for s in "$@"; do
 		(( HTTP_STATUS == s )) && return
 	done
-	echo "Unexpected http status $HTTP_STATUS received"
+	echo "??? Unexpected http status $HTTP_STATUS received"
 	exit 42
 }
 
@@ -75,7 +75,7 @@ function executeRequest() { # API endpoint, creds
 	HTTP_RESPONSE="$(curl "${AUTH[@]}" --silent --write-out "HTTPSTATUS:%{http_code}" https://${SF_URL}$1)"
 	HTTP_BODY=$(sed -e 's/HTTPSTATUS\:.*//g' <<< "$HTTP_RESPONSE")
 	HTTP_STATUS=$(tr -d '\n'  <<< "$HTTP_RESPONSE" | sed -e 's/.*HTTPSTATUS://')
-	echo "Status $HTTP_STATUS"
+	echo "--- Status $HTTP_STATUS"
 }
 
 checkPrerequ
