@@ -26,34 +26,80 @@
 #
 #######################################################################################################################
 
-GAMMU_INPUT_DIR="/var/spool/gammu/inbox" # directory gammu stores the received SMS
-SOURCE_PHONE="+4917147124712"	# phone number of SMS receiver
-TARGET_PHONE="+4917147114711"	# phone number of SMS relay target
-EMAIL="smsrelay@mydomain.de"	# email the SMS should be relayed to
-
+GAMMU_INPUT_DIR="/var/spool/gammu/inbox"
+SOURCE_PHONE="+4917147114711"
+TARGET_PHONE="+4917147124712"
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
+EMAIL_TARGET="smsrelay@dummy.com"
+EMAIL_ADMIN="admin@dummy.com"
+SERVER_NAME="SMSRelay"
+LOG="/var/log/$MYNAME"
+NOTIFY_TARGET=1
+NOTIFY_ADMIN=2
+NOTIFY_BOTH=$(( $NOTIFY_TARGET | $NOTIFY_ADMIN ))
 
-if [[ $1 == "start" ]]; then	# start sms relay
-        $MYSELF >> /var/log/$MYNAME.log &
+function send() { # rcv subject message
+	#echo "$3" | gammu-smsd-inject TEXT $TARGET_PHONE
+	(( $1 & $NOTIFY_TARGET )) && echo "$3" | mail -s "$2" $EMAIL_TARGET
+	(( $1 & $NOTIFY_ADMIN )) && echo "$3" | mail -s "$2" $EMAIL_ADMIN
+}
 
-elif [[ $1 == "stop" ]]; then	# stop sms relay
-        killall $MYSELF
+function handleSMS() { # file msg
 
-else	# process sms
-        inotifywait -m $GAMMU_INPUT_DIR -e create | while read path action file; do
-          echo "The file '$file' appeared in directory '$path' via '$action'"
-          msg="$(<$path/$file)"
-          if [[ ${msg^^} == "STOP" ]]; then
-                echo "SMS relay server will be stopped soon" | gammu-smsd-inject TEXT $TARGET_PHONE
-                sleep 1m
-                systemctl stop gammu-smsd
-                exit 0
-          fi
-          src_phone_number="$(cut -d _ -f 4 <<< "$file")"	# source phone number of SMS
+	local file="$1"
+	local msg="$2"
 
-          echo "$src_phone_number $msg" | gammu-smsd-inject TEXT $TARGET_PHONE	# relay received SMS
-          cat $path/$file | mail -s "$SOURCE_PHONE: SMS received from $src_phone_number" $EMAIL # send SMS to an eMail
-      done
-fi
+	case "$msg" in
+		\*echo)	echoMessage="$(cut -f 2- -d ' ' <<< "$msg")"
+			send $NOTIFY_ADMIN "$SERVER_NAME: *echo" "$echoMessage"
+			;;
+		\*|\*status)
+			send $NOTIFY_ADMIN "$SERVER_NAME: *status"
+			;;
+		\*help)
+			send $NOTFIY_ADMIN "$SERVER_NAME: *help" "*echo, *status, *cancel"
+			;;
+		\*cancel)
+		 	send $NOTIFY_ADMIN "$SERVER_NAME: *cancel" "SMS relay server will be stopped soon"
+			sleep 1m
+			systemctl stop gammu-smsd
+			exit 0
+			;;
+	 	*)
+			src_phone_number="$(cut -d _ -f 4 <<< "$file")"
+	  		send $NOTIFY_BOTH "SMS received from $src_phone_number" "$msg"
+			;;
+	esac
+ }
 
+case $1 in
+
+	start)	n=$(pgrep -c $MYSELF)
+		if (( $n != 1 )); then
+			echo "$MYSELF already active"
+			exit 0
+		fi
+		send $NOTIFY_ADMIN "$SERVER_NAME: *start" "Starting $SERVER_NAME for $SOURCE_PHONE"
+		$MYSELF execute >> $LOG &
+		;;
+	stop)	n=$(pgrep -c $MYSELF)
+		if (( $n  == 1 )); then
+			echo "$MYSELF already inactive"
+			exit 0
+		fi
+		send $NOTIFY_ADMIN "$SERVER_NAME: *stop" "Stopping $SERVER_NAME for $SOURCE_PHONE"
+		killall $MYSELF
+		;;
+
+	execute) send $NOTIFY_ADMIN "$SERVER_NAME: Listening for $SOURCE_PHONE..."
+		inotifywait -m $GAMMU_INPUT_DIR -e create | while read path action file; do
+			echo "$(date +"%Y%m%d-%H%M%S") The file '$file' appeared in directory '$path' via '$action'"
+ 	  		msg=$(<$path/$file)
+	  		handleSMS "$file" "$msg"
+      		done
+      		;;
+	*)	echo "Unknown $MYNAME command"
+		exit 0
+		;;
+esac
