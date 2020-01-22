@@ -5,7 +5,7 @@
 #   Script listens for SMS received and forwards them to another phone number or sends it to an eMail or does some other stuff with the SMS
 #
 #	This script is referred by https://www.linux-tips-and-tricks.de/en/raspberry/559-use-zte-ml190-usb-pen-drive-to-create-a-sms-relay-server
-#	which explains in detail how to create a SMS relay server
+#	which explains in detail how to create and manage the SMS relay server
 #
 #######################################################################################################################
 #
@@ -34,7 +34,7 @@ MYNAME=${MYSELF%.*}
 EMAIL_TARGET="smsrelay@dummy.com"
 EMAIL_ADMIN="admin@dummy.com"
 SERVER_NAME="SMSRelay"
-LOG="/var/log/$MYNAME"
+LOG="/var/log/$MYNAME.log"
 NOTIFY_TARGET=1
 NOTIFY_ADMIN=2
 NOTIFY_BOTH=$(( $NOTIFY_TARGET | $NOTIFY_ADMIN ))
