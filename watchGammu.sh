@@ -58,7 +58,7 @@ function handleSMS() { # file msg
 			send $NOTIFY_ADMIN "$SERVER_NAME: *status"
 			;;
 		\*help)
-			send $NOTFIY_ADMIN "$SERVER_NAME: *help" "*echo, *status, *cancel"
+			send $NOTIFY_ADMIN "$SERVER_NAME: *help" "*echo, *status, *cancel"
 			;;
 		\*cancel)
 		 	send $NOTIFY_ADMIN "$SERVER_NAME: *cancel" "SMS relay server will be stopped soon"
@@ -96,6 +96,7 @@ case $1 in
 		inotifywait -m $GAMMU_INPUT_DIR -e create | while read path action file; do
 			echo "$(date +"%Y%m%d-%H%M%S") The file '$file' appeared in directory '$path' via '$action'"
  	  		msg=$(<$path/$file)
+ 	  		echo "SMS contents: $msg"
 	  		handleSMS "$file" "$msg"
       		done
       		;;
