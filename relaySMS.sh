@@ -41,8 +41,8 @@ NOTIFY_BOTH=$(( $NOTIFY_TARGET | $NOTIFY_ADMIN ))
 
 function send() { # rcv subject message
 	#echo "$3" | gammu-smsd-inject TEXT $TARGET_PHONE
-	(( $1 & $NOTIFY_TARGET )) && echo "$3" | mail -s "$2" $EMAIL_TARGET
-	(( $1 & $NOTIFY_ADMIN )) && echo "$3" | mail -s "$2" $EMAIL_ADMIN
+	(( $1 & $NOTIFY_TARGET )) && echo "$3" | mail -s "$SERVER_NAME: $2" $EMAIL_TARGET
+	(( $1 & $NOTIFY_ADMIN )) && echo "$3" | mail -s "$SERVER_NAME: $2" $EMAIL_ADMIN
 }
 
 function handleSMS() { # file msg
@@ -51,17 +51,17 @@ function handleSMS() { # file msg
 	local msg="$2"
 
 	case "$msg" in
-		\*echo)	echoMessage="$(cut -f 2- -d ' ' <<< "$msg")"
-			send $NOTIFY_ADMIN "$SERVER_NAME: *echo" "$echoMessage"
+		\*echo*)	echoMessage="$(cut -f 2- -d ' ' <<< "$msg")"
+			send $NOTIFY_ADMIN "*echo" "$echoMessage"
 			;;
-		\*|\*status)
-			send $NOTIFY_ADMIN "$SERVER_NAME: *status"
+		\**|\*status*)
+			send $NOTIFY_ADMIN "*status"
 			;;
-		\*help)
-			send $NOTIFY_ADMIN "$SERVER_NAME: *help" "*echo, *status, *cancel"
+		\*help*)
+			send $NOTIFY_ADMIN "*help" "*echo, *status, *cancel"
 			;;
-		\*cancel)
-		 	send $NOTIFY_ADMIN "$SERVER_NAME: *cancel" "SMS relay server will be stopped soon"
+		\*cancel*)
+		 	send $NOTIFY_ADMIN "*cancel" "SMS relay server will be stopped soon"
 			sleep 1m
 			systemctl stop gammu-smsd
 			exit 0
@@ -80,7 +80,7 @@ case $1 in
 			echo "$MYSELF already active"
 			exit 0
 		fi
-		send $NOTIFY_ADMIN "$SERVER_NAME: *start" "Starting $SERVER_NAME for $SOURCE_PHONE"
+		send $NOTIFY_ADMIN "Starting for $SOURCE_PHONE"
 		$MYSELF execute >> $LOG &
 		;;
 	stop)	n=$(pgrep -c $MYSELF)
@@ -88,18 +88,18 @@ case $1 in
 			echo "$MYSELF already inactive"
 			exit 0
 		fi
-		send $NOTIFY_ADMIN "$SERVER_NAME: *stop" "Stopping $SERVER_NAME for $SOURCE_PHONE"
+		send $NOTIFY_ADMIN "Stopping for $SOURCE_PHONE"
 		killall $MYSELF
 		;;
 
-	execute) send $NOTIFY_ADMIN "$SERVER_NAME: Listening for $SOURCE_PHONE..."
+	execute) send $NOTIFY_ADMIN "Listening for $SOURCE_PHONE"
 		inotifywait -m $GAMMU_INPUT_DIR -e create | while read path action file; do
-			echo "$(date +"%Y%m%d-%H%M%S") The file '$file' appeared in directory '$path' via '$action'"
- 	  		msg=$(<$path/$file)
- 	  		echo "SMS contents: $msg"
-	  		handleSMS "$file" "$msg"
+					echo "$(date +"%Y%m%d-%H%M%S") The file '$file' appeared in directory '$path' via '$action'"
+					msg=$(<$path/$file)
+					echo "SMS contents: $msg"
+					handleSMS "$file" "$msg"
       		done
-      		;;
+      ;;
 	*)	echo "Unknown $MYNAME command"
 		exit 0
 		;;
