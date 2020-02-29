@@ -1,15 +1,20 @@
 #!/bin/bash
+
 #######################################################################################################################
 #
-# 	Sample code for a SMS relay server with gammu
-#   Script listens for SMS received and forwards them to another phone number or sends it to an eMail or does some other stuff with the SMS
+# 	  Listen for SMS and forward them via eMail, can also be used to receive SMS for phone number A and forward the SMS to telephone number B
 #
-#	This script is referred by https://www.linux-tips-and-tricks.de/en/raspberry/559-use-zte-ml190-usb-pen-drive-to-create-a-sms-relay-server
-#	which explains in detail how to create and manage the SMS relay server
+# 	  Required tools: gammu-smsd, eMail client
+#
+#	  Setup:
+#    1) Install and configure gammu-smsd to use an existing USB phone stick, e.g. ZTE ML190
+#	  2 Add following line in /etc/gammu-smsdrc
+# 	    runonreceive = /usr/local/sbin/relaySMS.sh
+# 	  3) Copy script into /usr/local/sbin and make it executable
 #
 #######################################################################################################################
 #
-#    Copyright (c) 2020 framp at linux-tips-and-tricks dot de
+#    Copyright (C) 2020 framp at linux-tips-and-tricks dot de
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -27,80 +32,77 @@
 #######################################################################################################################
 
 GAMMU_INPUT_DIR="/var/spool/gammu/inbox"
-SOURCE_PHONE="+4917147114711"
-TARGET_PHONE="+4917147124712"
+SOURCE_PHONE="+49471147114711"	# source phone number listened for SMS
+TARGET_PHONE="+49471247124712"	# target phone number if SMS should be forwarded to another SMS phone number
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
-EMAIL_TARGET="smsrelay@dummy.com"
-EMAIL_ADMIN="admin@dummy.com"
+EMAIL_TARGET="smsrelay@dummy.com"	# eMail which receives the forwarded SMS
+EMAIL_ADMIN="admin@dummy.com"			# admin eMail which receives server status change eMails
 SERVER_NAME="SMSRelay"
 LOG="/var/log/$MYNAME.log"
 NOTIFY_TARGET=1
 NOTIFY_ADMIN=2
 NOTIFY_BOTH=$(( $NOTIFY_TARGET | $NOTIFY_ADMIN ))
 
+# send SMS to eMails or other SMS phone number
+
 function send() { # rcv subject message
 	#echo "$3" | gammu-smsd-inject TEXT $TARGET_PHONE
-	(( $1 & $NOTIFY_TARGET )) && echo "$3" | mail -s "$SERVER_NAME: $2" $EMAIL_TARGET
-	(( $1 & $NOTIFY_ADMIN )) && echo "$3" | mail -s "$SERVER_NAME: $2" $EMAIL_ADMIN
+	if (( $1 & $NOTIFY_TARGET )); then
+		echo "--- notify target"	
+	      	echo "$3" | mail -s "$SERVER_NAME: $2" $EMAIL_TARGET 
+	fi
+
+	if (( $1 & $NOTIFY_ADMIN )); then
+		echo "--- notify admin"	
+	      	echo "$3" | mail -s "$SERVER_NAME: $2" $EMAIL_ADMIN
+	fi
 }
 
-function handleSMS() { # file msg
+# parse SMS and initiate different actions
 
-	local file="$1"
+function handleSMS() { # number msg
+
+	local number="$1"
 	local msg="$2"
 
 	case "$msg" in
-		\*echo*)	echoMessage="$(cut -f 2- -d ' ' <<< "$msg")"
-			send $NOTIFY_ADMIN "*echo" "$echoMessage"
+		\*echo*)					# command *echo: just echo the received text to admin email
+			echoMessage="$(cut -f 2- -d ' ' <<< "$msg")"
+		       	echo "--- echo"	
+			send $NOTIFY_ADMIN "*echo command received" "$echoMessage"
+			;;	
+		\*status*)				# command *status: just send alive email to admin email
+		       	echo "--- status"	
+			send $NOTIFY_ADMIN "*status command received"
 			;;
-		\**|\*status*)
-			send $NOTIFY_ADMIN "*status"
-			;;
-		\*help*)
-			send $NOTIFY_ADMIN "*help" "*echo, *status, *cancel"
-			;;
-		\*cancel*)
-		 	send $NOTIFY_ADMIN "*cancel" "SMS relay server will be stopped soon"
+		\*|\*help*)				# command *help: just send help text to admin eMail
+		       	echo "--- help"	
+			send $NOTIFY_ADMIN "*help command received" "*echo MESSAGE, *status, *cancel"
+			;;	
+		\*cancel*)				# command *cancel: cancel gammu-smsd. Just in case there is some unrecoverable loop
+		       	echo "--- cancel"	
+		 	send $NOTIFY_ADMIN "*cancel command received" "SMS relay server will be stopped soon" 
 			sleep 1m
 			systemctl stop gammu-smsd
 			exit 0
 			;;
-	 	*)
-			src_phone_number="$(cut -d _ -f 4 <<< "$file")"
-	  		send $NOTIFY_BOTH "SMS received from $src_phone_number" "$msg"
+	 	*) 						# forward received SMS
+		       	echo "--- *"	
+	  		send $NOTIFY_BOTH "SMS received from $number" "$msg" 
 			;;
 	esac
  }
 
-case $1 in
+# read all received messages and process them
 
-	start)	n=$(pgrep -c $MYSELF)
-		if (( $n != 1 )); then
-			echo "$MYSELF already active"
-			exit 0
-		fi
-		send $NOTIFY_ADMIN "Starting for $SOURCE_PHONE"
-		$MYSELF execute >> $LOG &
-		;;
-	stop)	n=$(pgrep -c $MYSELF)
-		if (( $n  == 1 )); then
-			echo "$MYSELF already inactive"
-			exit 0
-		fi
-		send $NOTIFY_ADMIN "Stopping for $SOURCE_PHONE"
-		killall $MYSELF
-		;;
+for i in $SMS_MESSAGES; do
+	echo "Processing $i: $1"
+        number="SMS_${i}_NUMBER"	
+	echo "SMS_NUMBER: ${!number}"
+        text="SMS_${i}_TEXT"	
+	echo "SMS_TEXT: ${!text}"
+	echo "$(date +"%Y%m%d-%H%M%S") SMS '$1' received"
+	handleSMS "${!number}" "${!text}" 
+done
 
-	execute) send $NOTIFY_ADMIN "Listening for $SOURCE_PHONE"
-		inotifywait -m $GAMMU_INPUT_DIR -e create | while read path action file; do
-					echo "$(date +"%Y%m%d-%H%M%S") The file '$file' appeared in directory '$path' via '$action'"
-					msg=$(<$path/$file)
-					echo "SMS contents: $msg"
-					handleSMS "$file" "$msg"
-      		done
-      ;;
-	*)	echo "Unknown $MYNAME command"
-		exit 0
-		;;
-esac
