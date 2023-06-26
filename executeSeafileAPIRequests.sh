@@ -32,25 +32,28 @@
 
 function checkPrerequ() {
 
+	local miss=1
 	if [[ -z "$SF_USER" ]]; then
 		echo '??? Missing export SF_USER="email", e.g foo@bar.com'
-		exit 42
+		miss=0
 	fi
 
 	if [[ -z "$SF_PASSWORD" ]]; then
 		echo '??? Missing export SF_PASSWORD="password", e.g V3ry53cur3P455w0rd'
-		exit 42
+		miss=0
 	fi
 
 	if [[ -z "$SF_URL" ]]; then
 		echo '??? Missing export SF_URL="seafileurl", e.g myseafile.foo.com'
-		exit 42
+		miss=0
 	fi
 
-	if ! which jq; then
+	if ! which jq &>/dev/null; then
 		echo "??? Missing jq"
-		exit 42
+		miss=0
 	fi
+	
+	return $miss
 
 }
 function expect() { # expected valid http status codes
@@ -79,6 +82,10 @@ function executeRequest() { # API endpoint, creds
 }
 
 checkPrerequ
+
+if (( ! $? )); then
+	exit 42
+fi	
 
 echo "Using seafile $SF_URL"
 echo "Using user $SF_USER"
