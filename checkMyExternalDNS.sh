@@ -58,7 +58,7 @@ if [[ -z $lastRun ]] || (( "$lastRun" < "$STATE_NOW" )); then
 	externalNameIP="$(getent hosts $EXTERNAL_NAME | cut -f 1 -d " ")"
 
 	success=0
-	if [[ "$myExternalID" != "$externalNameIP" ]]; then
+	if [[ "$myExternalIP" != "$externalNameIP" ]]; then
 		for (( i=0; i<=$UPDATE_RETRY; i++)); do
 			echo "$NOW: Update request $i from $externalNameIP to $myExternalIP" >> $LOG
 			curl "$DDNS_URL/nic/update?hostname=$EXTERNAL_NAME&myip=$myExternalIP&user=$USERNAME&pass=$PWD"
