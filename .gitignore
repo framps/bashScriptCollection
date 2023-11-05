@@ -1,0 +1,7 @@
+*.log
+*.msg
+*.env
+*.conf
+constants.sh
+email.conf
+
