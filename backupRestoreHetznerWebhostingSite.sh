@@ -31,9 +31,10 @@ MYNAME=${MYSELF%.*}
 
 VERBOSE=""
 CLONE=0						# create a local website and db backup and restore website and db"
-BASKUPS=3
+MAXBACKUPS=3
+TIMING=""
 
-while getopts ':bchv' opt; do
+while getopts ':bchtv' opt; do
   case "$opt" in
 
 	 b)
@@ -47,6 +48,10 @@ while getopts ':bchv' opt; do
     c)
 		CLONE=1
       ;;
+
+	t)
+		TIMING="time"
+		;;
 
     v)
       VERBOSE="-v"
@@ -114,53 +119,58 @@ else
 	NO=$INITIAL_NO
 fi
 
+function writeToConsole() {
+	echo "===> $@"
+}
+
 function cleanup() {
-	if mount | grep -q "^$REMOTE_MP"; then
-		echo "umount $REMOTE_MP"
+	if mount | grep -q " on $REMOTE_MP"; then
+		writeToConsole "umount $REMOTE_MP"
 		sudo umount $REMOTE_MP
 	fi
 	if (( failure )); then
-		echo "Deleting incomplete backup dir $DIRNAME$NO"
+		writeToConsole "Deleting incomplete backup dir $DIRNAME$NO"
 		sudo rm -rf $DIRNAME$NO
 	else
-		find . -name "$DIRNAME*" -type d | sort | head -n -MAXBACKUPS | xargs -I {} rm -rf "{}"
+		sudo find . -name "$DIRNAME*" -type d | sort | head -n -$MAXBACKUPS | xargs -I {} sudo rm -rf "{}"
 	fi
 }
 
 # create new backup dir
 if [[ ! -d $DIRNAME$NO ]]; then
+	writeToConsole "Creating $DIRNAME$NO"
 	mkdir $DIRNAME$NO
 	(( $? )) && ( echo "Error creating directory $DIRNAME$NO"; exit )
 fi
 trap "cleanup" SIGINT SIGTERM EXIT
 
-echo "Dumping DB"
-time mysqldump -p $DB_BACKUPSOURCE_DBNAME -u $DB_BACKUPSOURCE_USERID -p$DB_BACKUPSOURCE_PASSWORD -h $DB_BACKUPSOURCE_SERVER --default-character-set=utf8mb4 > $DIRNAME$NO/$DB_BACKUPSOURCE_DBNAME_backup.sql
+writeToConsole "Dumping DB $DB_BACKUPSOURCE_DBNAME"
+$TIMING mysqldump -p $DB_BACKUPSOURCE_DBNAME -u $DB_BACKUPSOURCE_USERID -p$DB_BACKUPSOURCE_PASSWORD -h $DB_BACKUPSOURCE_SERVER --default-character-set=utf8mb4 > $DIRNAME$NO/$DB_BACKUPSOURCE_DBNAME.sql
+(( failure=failure || $? )) && exit 1
+
+writeToConsole "Restoring DB $DB_RESTORESOURCE_DBNAME"
+$TIMING mysql -p $DB_RESTORESOURCE_DBNAME -u $DB_RESTORESOURCE_USERID -p$DB_RESTORESOURCE_PASSWORD -h $DB_RESTORESOURCE_SERVER < $DIRNAME$NO/$DB_BACKUPSOURCE_DBNAME.sql
 (( failure=failure || $? )) && exit 1
 
 if (( $CLONE )); then
 
 	sudo mount $REMOTE_MP
-	(( $? )) && ( echo "Error mounting REMOTE_MP"; exit )
+	(( $? )) && ( writeToConsole "Error mounting REMOTE_MP"; exit )
 
-	echo "rsync remote website from $REMOTE_MP/$FS_BACKUP to $DIRNAME$NO"
-	time sudo rsync -a $VERBOSE --delete --exclude cache/* $LINKDEST $REMOTE_MP/$FS_BACKUP $DIRNAME$NO
-	(( failure=failure || $? )) && exit 1
-
-	echo "Restoring DB"
-	time mysql -p $DB_RESTORESOURCE_DBNAME -u $DB_RESTORESOURCE_USERID -p$DB_RESTORESOURCE_PASSWORD -h $DB_RESTORESOURCE_SERVER < $DIRNAME$NO/$DB_BACKUPSOURCE_DBNAME_backup.sql
+	writeToConsole "rsync remote website from $REMOTE_MP/$FS_BACKUP to $DIRNAME$NO"
+	$TIMING sudo rsync -a $VERBOSE --delete --exclude cache/* $LINKDEST $REMOTE_MP/$FS_BACKUP $DIRNAME$NO
 	(( failure=failure || $? )) && exit 1
 
 	if [[ ! -d $REMOTE_MP/$FS_RESTORE ]]; then
 		mkdir $REMOTE_MP/$FS_RESTORE
-		(( $? )) && ( echo "Error creating directory $REMOTE_MP/$FS_RESTORE"; exit )
+		(( $? )) && ( writeToConsole "Error creating directory $REMOTE_MP/$FS_RESTORE"; exit )
 	fi
 
-	echo "rsync local website from $DIRNAME$NO to $FS_RESTORE"
-	time sudo rsync -a $VERBOSE --delete $DIRNAME$NO/ $REMOTE_MP/$FS_RESTORE
-	(( failure=failure || $? )) && exit 1
+	writeToConsole "rsync local website from $DIRNAME$NO to $FS_RESTORE"
+	$TIMING sudo rsync -a $VERBOSE --delete $DIRNAME$NO/ $REMOTE_MP/$FS_RESTORE
+	(( failure=failure || ($? && $? != 23) )) && exit 1
 
-	echo "Backup created, db import tested and website cloned"
+	writeToConsole "Backup created, db import tested and website cloned"
 else
-	echo "Backup created and db import tested"
+	writeToConsole "Backup created and db import tested"
 fi
