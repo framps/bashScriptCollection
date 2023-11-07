@@ -7,6 +7,14 @@
 #
 #	===> NOTE: Script is still under construction
 #
+#	Steps:
+#	1) Create mysqldump of database
+#	2) restore mysqldump in regression database
+#	3) Download website files
+#	4) Upload website files into regression directory
+#
+#	Number of backups is configurable
+#
 #######################################################################################################################
 #
 #    Copyright (c) 2023 framp at linux-tips-and-tricks dot de
@@ -29,9 +37,12 @@
 MYSELF="$(basename "$(test -L "$0" && readlink "$0" || echo "$0")")"
 MYNAME=${MYSELF%.*}
 
+# defaults
 VERBOSE=""
+
 CLONE=0						# create a local website and db backup and restore website and db"
-MAXBACKUPS=3
+MAXBACKUPS=3				
+REMOTE_WAS_MOUNTED=0		# dont umount remote website if it's already mounted
 TIMING=""
 
 while getopts ':bchtv' opt; do
@@ -119,14 +130,21 @@ else
 	NO=$INITIAL_NO
 fi
 
+function isMounted() { # dir
+	grep -qs "$1" /proc/mounts
+	return
+}
+
 function writeToConsole() {
 	echo "===> $@"
 }
 
 function cleanup() {
-	if mount | grep -q " on $REMOTE_MP"; then
-		writeToConsole "umount $REMOTE_MP"
-		sudo umount $REMOTE_MP
+	if (( ! REMOTE_WAS_MOUNTED )); then
+		if mount | grep -q "^$REMOTE_MP"; then
+			writeToConsole "umount $REMOTE_MP"
+			sudo umount $REMOTE_MP
+		fi
 	fi
 	if (( failure )); then
 		writeToConsole "Deleting incomplete backup dir $DIRNAME$NO"
@@ -154,11 +172,15 @@ $TIMING mysql -p $DB_RESTORESOURCE_DBNAME -u $DB_RESTORESOURCE_USERID -p$DB_REST
 
 if (( $CLONE )); then
 
-	sudo mount $REMOTE_MP
+	if ! isMounted $REMOTE_MP; then
+		sudo mount $REMOTE_MP
+	else
+		REMOTE_WAS_MOUNTED=1
+	fi
 	(( $? )) && ( writeToConsole "Error mounting REMOTE_MP"; exit )
 
 	writeToConsole "rsync remote website from $REMOTE_MP/$FS_BACKUP to $DIRNAME$NO"
-	$TIMING sudo rsync -a $VERBOSE --delete --exclude cache/* $LINKDEST $REMOTE_MP/$FS_BACKUP $DIRNAME$NO
+	$TIMING sudo rsync -a $VERBOSE --delete --exclude cache/* $LINKDEST $REMOTE_MP/$FS_BACKUP/ $DIRNAME$NO/
 	(( failure=failure || $? )) && exit 1
 
 	if [[ ! -d $REMOTE_MP/$FS_RESTORE ]]; then
@@ -167,8 +189,8 @@ if (( $CLONE )); then
 	fi
 
 	writeToConsole "rsync local website from $DIRNAME$NO to $FS_RESTORE"
-	$TIMING sudo rsync -a $VERBOSE --delete $DIRNAME$NO/ $REMOTE_MP/$FS_RESTORE
-	(( failure=failure || ($? && $? != 23) )) && exit 1
+	$TIMING sudo rsync -a $VERBOSE --delete --exclude $DB_BACKUPSOURCE_DBNAME.sql $DIRNAME$NO/ $REMOTE_MP/$FS_RESTORE
+	(( failure=failure || ( $? && ($? != 23)) )) && exit 1
 
 	writeToConsole "Backup created, db import tested and website cloned"
 else
