@@ -1,19 +1,23 @@
-#/bin/bash
+#!/bin/bash
 #
 #######################################################################################################################
 #
 # 	 Create a local backup of a Webhosting website from a Hetzner and
 #	 restore the backup to a restore test website on a Webhosting website from Hetzner
 #
-#	===> NOTE: Script is still under construction
-#
 #	Steps:
 #	1) Create mysqldump of database
-#	2) restore mysqldump in regression database
+#	2) Restore mysqldump in regression database
 #	3) Download website files
 #	4) Upload website files into regression directory
 #
+#	Prerequisites:
+#	1) Website directory and mysqlDB
+#	2) Restortest Website directoy and restore mysqlDB
+#
 #	Number of backups is configurable
+#
+#	Just use this code as a template for your website
 #
 #######################################################################################################################
 #
@@ -37,15 +41,27 @@
 MYSELF="$(basename "$(test -L "$0" && readlink "$0" || echo "$0")")"
 MYNAME=${MYSELF%.*}
 
+CONFIGURATION_FILE="configuration.php"
+
 # defaults
 VERBOSE=""
 
 CLONE=0						# create a local website and db backup and restore website and db"
 MAXBACKUPS=3				
-REMOTE_WAS_MOUNTED=0		# dont umount remote website if it's already mounted
+REMOTE_WAS_MOUNTED=0		# don't umount remote website if it's already mounted
 TIMING=""
+DATE=$(date +%Y%M%d%H%m%S)
 
-while getopts ':bchtv' opt; do
+function isMounted() { # dir
+	grep -qs "$1" /proc/mounts
+	return
+}
+
+function writeToConsole() {
+	echo "===> $@"
+}
+
+while getopts ':bchv' opt; do
   case "$opt" in
 
 	 b)
@@ -60,16 +76,12 @@ while getopts ':bchtv' opt; do
 		CLONE=1
       ;;
 
-	t)
-		TIMING="time"
-		;;
-
     v)
       VERBOSE="-v"
       ;;
 
     ?|h)
-      echo "Usage: $(basename $0) [-c] [-v]"
+      echo "Usage: $(basename $0) [-b <backups>] [-c] [-v]"
       exit 1
       ;;
 
@@ -86,9 +98,16 @@ while getopts ':bchtv' opt; do
 done
 shift "$(($OPTIND -1 ))"
 
+if (( $UID != 0 )); then
+	writeToConsole "Call script as root or with sudo"
+	exit 1
+fi
+
 if [[ -e ./$MYNAME.conf ]]; then
 	source ./$MYNAME.conf
 else
+	# Backup directory
+	BACKUP_DIR="~"
 	# Local backupdirname of website files
 	DIRNAME="myBackups"
 	# Mountpoint of Website
@@ -102,6 +121,8 @@ else
 	DB_RESTORESOURCE=(dbname uid pwd srv)
 	# maximum of backups to keep
 	MAXBACKUPS="3"
+	# restore URL
+	BACKUP_URL="https://restore.test.de"
 fi
 
 DB_BACKUPSOURCE_NAMES=(DB_BACKUPSOURCE_DBNAME DB_BACKUPSOURCE_USERID DB_BACKUPSOURCE_PASSWORD DB_BACKUPSOURCE_SERVER)
@@ -118,69 +139,63 @@ done
 
 failure=0
 INITIAL_NO=0
+DIRNAME="${DIRNAME}_"			# add backup sequence number separator
 
-LASTNO=$(find . -name "$DIRNAME*" -type d | sort | tail -n 1 | sed "s/.*$DIRNAME//")
+LASTNO=$(find $BACKUP_DIR -name "$DIRNAME*" -type d | sort -t _ -k 2 -n | tail -n 1 | sed "s@.*$BACKUP_DIR/$DIRNAME@@")
+exit
 
 # create next backup dir
 if [[ -n $LASTNO ]]; then
 	NO=$((LASTNO+1))
 	LINKNO=$((NO-1))
-	LINKDEST="--link-dest=../$DIRNAME$LINKNO"
+	LINKDEST="--link-dest=$BACKUP_DIR/$DIRNAME$LINKNO"
 else
 	NO=$INITIAL_NO
 fi
-
-function isMounted() { # dir
-	grep -qs "$1" /proc/mounts
-	return
-}
-
-function writeToConsole() {
-	echo "===> $@"
-}
 
 function cleanup() {
 	if (( ! REMOTE_WAS_MOUNTED )); then
 		if mount | grep -q "^$REMOTE_MP"; then
 			writeToConsole "umount $REMOTE_MP"
-			sudo umount $REMOTE_MP
+			umount $REMOTE_MP
 		fi
 	fi
 	if (( failure )); then
-		writeToConsole "Deleting incomplete backup dir $DIRNAME$NO"
-		sudo rm -rf $DIRNAME$NO
+		writeToConsole "Deleting incomplete backup dir $BACKUP_DIR/$DIRNAME$NO"
+		rm -rf $BACKUP_DIR/$DIRNAME$NO
 	else
-		sudo find . -name "$DIRNAME*" -type d | sort | head -n -$MAXBACKUPS | xargs -I {} sudo rm -rf "{}"
+		writeToConsole "Deleting old backups and keep $BACKUPS backups"
+		find $BACKUP_DIR -name "$DIRNAME*" -type d | sort -t _ -k 2 -n | head -n -$MAXBACKUPS | xargs -I {} rm -rf "{}"
 	fi
 }
 
 # create new backup dir
-if [[ ! -d $DIRNAME$NO ]]; then
-	writeToConsole "Creating $DIRNAME$NO"
-	mkdir $DIRNAME$NO
-	(( $? )) && ( echo "Error creating directory $DIRNAME$NO"; exit )
+if [[ ! -d $BACKUP_DIR/$DIRNAME$NO ]]; then
+	writeToConsole "Creating $BACKUP_DIR/$DIRNAME$NO"
+	mkdir $BACKUP_DIR/$DIRNAME$NO
+	(( $? )) && ( echo "Error creating directory $BACKUP_DIR/$DIRNAME$NO"; exit )
 fi
 trap "cleanup" SIGINT SIGTERM EXIT
 
-writeToConsole "Dumping DB $DB_BACKUPSOURCE_DBNAME"
-$TIMING mysqldump -p $DB_BACKUPSOURCE_DBNAME -u $DB_BACKUPSOURCE_USERID -p$DB_BACKUPSOURCE_PASSWORD -h $DB_BACKUPSOURCE_SERVER --default-character-set=utf8mb4 > $DIRNAME$NO/$DB_BACKUPSOURCE_DBNAME.sql
-(( failure=failure || $? )) && exit 1
+writeToConsole "Dumping DB $DB_BACKUPSOURCE_DBNAME to $BACKUP_DIR/$DIRNAME$NO"
+mysqldump -p $DB_BACKUPSOURCE_DBNAME -u $DB_BACKUPSOURCE_USERID -p$DB_BACKUPSOURCE_PASSWORD -h $DB_BACKUPSOURCE_SERVER --default-character-set=utf8mb4 > $BACKUP_DIR/$DIRNAME$NO/$DB_BACKUPSOURCE_DBNAME.sql
+(( failure=failure || $? )) && ( writeToConsole "DB dump of $DB_BACKUPSOURCE_DBNAME failed"; exit )
 
-writeToConsole "Restoring DB $DB_RESTORESOURCE_DBNAME"
-$TIMING mysql -p $DB_RESTORESOURCE_DBNAME -u $DB_RESTORESOURCE_USERID -p$DB_RESTORESOURCE_PASSWORD -h $DB_RESTORESOURCE_SERVER < $DIRNAME$NO/$DB_BACKUPSOURCE_DBNAME.sql
-(( failure=failure || $? )) && exit 1
+writeToConsole "Restoring DB $DB_RESTORESOURCE_DBNAME from $BACKUP_DIR/$DIRNAME$NO"
+mysql -p $DB_RESTORESOURCE_DBNAME -u $DB_RESTORESOURCE_USERID -p$DB_RESTORESOURCE_PASSWORD -h $DB_RESTORESOURCE_SERVER < $BACKUP_DIR/$DIRNAME$NO/$DB_BACKUPSOURCE_DBNAME.sql
+(( failure=failure || $? )) && ( writeToConsole "Restor of DB dump to $DB_RESTORESOURCE_DBNAME failed"; exit )
 
 if (( $CLONE )); then
 
 	if ! isMounted $REMOTE_MP; then
-		sudo mount $REMOTE_MP
+		mount $REMOTE_MP
 	else
 		REMOTE_WAS_MOUNTED=1
 	fi
 	(( $? )) && ( writeToConsole "Error mounting REMOTE_MP"; exit )
 
-	writeToConsole "rsync remote website from $REMOTE_MP/$FS_BACKUP to $DIRNAME$NO"
-	$TIMING sudo rsync -a $VERBOSE --delete --exclude cache/* $LINKDEST $REMOTE_MP/$FS_BACKUP/ $DIRNAME$NO/
+	writeToConsole "rsync remote website from $REMOTE_MP/$FS_BACKUP to $BACKUP_DIR/$DIRNAME$NO"
+	rsync -a $VERBOSE --delete --exclude cache/* $LINKDEST $REMOTE_MP/$FS_BACKUP/ $BACKUP_DIR/$DIRNAME$NO/
 	(( failure=failure || $? )) && exit 1
 
 	if [[ ! -d $REMOTE_MP/$FS_RESTORE ]]; then
@@ -188,9 +203,21 @@ if (( $CLONE )); then
 		(( $? )) && ( writeToConsole "Error creating directory $REMOTE_MP/$FS_RESTORE"; exit )
 	fi
 
-	writeToConsole "rsync local website from $DIRNAME$NO to $FS_RESTORE"
-	$TIMING sudo rsync -a $VERBOSE --delete --exclude $DB_BACKUPSOURCE_DBNAME.sql $DIRNAME$NO/ $REMOTE_MP/$FS_RESTORE
-	(( failure=failure || ( $? && ($? != 23)) )) && exit 1
+	writeToConsole "rsync local website from $BACKUP_DIR/$DIRNAME$NO to $FS_RESTORE"
+	rsync -a $VERBOSE --delete --exclude $DB_BACKUPSOURCE_DBNAME.sql $BACKUP_DIR/$DIRNAME$NO/ $REMOTE_MP/$FS_RESTORE
+	(( failure=failure || $? )) && exit 1
+
+	writeToConsole "Updating $CONFIGURATION_FILE"
+	sed -i "s/public \$host =.*;/public \$host = '$DB_RESTORESOURCE_SERVER';/" $REMOTE_MP/$FS_RESTORE/$CONFIGURATION_FILE
+	(( failure=failure || $? )) && ( writeToConsole "Error updating host"; exit 1 )
+	sed -i "s/public \$user =.*;/public \$user = $DB_RESTORESOURCE_USERID;/" $REMOTE_MP/$FS_RESTORE/$CONFIGURATION_FILE
+	(( failure=failure || $? )) && ( writeToConsole "Error updating user"; exit 1 )
+	sed -i "s/public \$password =.*;/public \$password = $DB_RESTORESOURCE_PASSWORD;/" $REMOTE_MP/$FS_RESTORE/$CONFIGURATION_FILE
+	(( failure=failure || $? )) && ( writeToConsole "Error updating password"; exit 1 )
+	sed -i "s/public \$db =.*;/public \$db = $DB_RESTORESOURCE_DBNAME;/" $REMOTE_MP/$FS_RESTORE/$CONFIGURATION_FILE
+	(( failure=failure || $? )) && ( writeToConsole "Error updating db"; exit 1 )
+	sed -i "s@public \$live_site =.*;@public \$live_site = '$BACKUP_URL';@" $REMOTE_MP/$FS_RESTORE/$CONFIGURATION_FILE
+	(( failure=failure || $? )) && ( writeToConsole "Error updating live_site"; exit 1 )
 
 	writeToConsole "Backup created, db import tested and website cloned"
 else
