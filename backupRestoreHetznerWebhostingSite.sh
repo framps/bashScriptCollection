@@ -177,7 +177,7 @@ function cleanup() {
 		writeToConsole "Deleting incomplete backup dir $BACKUP_DIR/$DIRNAME$NO"
 		rm -rf $BACKUP_DIR/$DIRNAME$NO
 	else
-		writeToConsole "Deleting old backups and keep $BACKUPS backups"
+		writeToConsole "Deleting old backups and keep $MAXBACKUPS backups"
 		find $BACKUP_DIR -name "$DIRNAME*" -type d | sort -t _ -k 2 -n | head -n -$MAXBACKUPS | xargs -I {} rm -rf "{}"
 	fi
 }
