@@ -13,3 +13,16 @@ A collection of bashscripts I wrote which may or may not be useful for others :-
 8. relaySMS.sh - Tiny SMS relay server script which reads all SMS received with gammu-smsd and forwards them to another phonenumber or sends them to an email or tiggers any other activity
 9. checkMyExternalDNS.sh - Checks whether the IP update on an external DDNS executed by a router was successful or has to be updated
 10. backupRestoreHetznerWebhostingSite.sh - Create a website backups and restore the created backup into an other website and DB to backup and test the backup
+```
+pi@asterix:~ $ sudo ./backupRestoreHetznerWebhostingSite.sh -c
+===> Using /disks/silver/backup/framp_3 for hardlinks
+===> Creating /disks/silver/backup/framp_4
+===> Dumping DB frampa_ltat to /disks/silver/backup/framp_4
+===> Restoring DB frampa_<restorewebsite> from /disks/silver/backup/framp_4
+===> rsync remote website from /remote/framp/public_html/<website> to /disks/silver/backup/framp_4
+===> rsync local website from /disks/silver/ltatBackup/framp_4 to public_html/<restorewebsite>
+===> Updating configuration.php
+===> Backup created, db import tested and website cloned
+===> Backuptime: 00:05:03
+===> Deleting old backups and keep 3 backups
+```
