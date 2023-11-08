@@ -12,4 +12,4 @@ A collection of bashscripts I wrote which may or may not be useful for others :-
 7. watchFileChange.sh - Watch a file for any changes and start actions if file changes
 8. relaySMS.sh - Tiny SMS relay server script which reads all SMS received with gammu-smsd and forwards them to another phonenumber or sends them to an email or tiggers any other activity
 9. checkMyExternalDNS.sh - Checks whether the IP update on an external DDNS executed by a router was successful or has to be updated
-
+10. backupRestoreHetznerWebhostingSite.sh - Create a website backups and restore the created backup into an other website and DB to backup and test the backup
