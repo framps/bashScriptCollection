@@ -50,7 +50,6 @@ CLONE=0						# create a local website and db backup and restore website and db"
 MAXBACKUPS=3				
 REMOTE_WAS_MOUNTED=0		# don't umount remote website if it's already mounted
 TIMING=""
-DATE=$(date +%Y%M%d%H%m%S)
 
 function isMounted() { # dir
 	grep -qs "$1" /proc/mounts
@@ -59,6 +58,21 @@ function isMounted() { # dir
 
 function writeToConsole() {
 	echo "===> $@"
+}
+
+# calculate time difference, return array with days, hours, minutes and seconds
+function duration() { # startTime endTime
+	factors=(86400 3600 60 1)
+	local diff=$(( $2 - $1 ))
+	local d i q
+	i=0
+	for f in "${factors[@]}"; do
+		q=$(( diff / f ))
+		diff=$(( diff - q * f ))
+		d[i]=$(printf "%02d" $q)
+		((i++))
+	done
+	echo "${d[@]}"
 }
 
 while getopts ':bchv' opt; do
@@ -104,11 +118,11 @@ if (( $UID != 0 )); then
 fi
 
 if [[ -e ./$MYNAME.conf ]]; then
-	source ./$MYNAME.conf
-else
+	source ./$MYNAME.conf						# use config file for following config variables
+else 											# hard code config variables
 	# Backup directory
 	BACKUP_DIR="~"
-	# Local backupdirname of website files
+	# Local backupdirname of website files, don't use _ in dirname
 	DIRNAME="myBackups"
 	# Mountpoint of Website
 	REMOTE_MP="/remote/hetzner"
@@ -142,7 +156,6 @@ INITIAL_NO=0
 DIRNAME="${DIRNAME}_"			# add backup sequence number separator
 
 LASTNO=$(find $BACKUP_DIR -name "$DIRNAME*" -type d | sort -t _ -k 2 -n | tail -n 1 | sed "s@.*$BACKUP_DIR/$DIRNAME@@")
-exit
 
 # create next backup dir
 if [[ -n $LASTNO ]]; then
@@ -176,6 +189,8 @@ if [[ ! -d $BACKUP_DIR/$DIRNAME$NO ]]; then
 	(( $? )) && ( echo "Error creating directory $BACKUP_DIR/$DIRNAME$NO"; exit )
 fi
 trap "cleanup" SIGINT SIGTERM EXIT
+
+START_TIME=$(date +%s)
 
 writeToConsole "Dumping DB $DB_BACKUPSOURCE_DBNAME to $BACKUP_DIR/$DIRNAME$NO"
 mysqldump -p $DB_BACKUPSOURCE_DBNAME -u $DB_BACKUPSOURCE_USERID -p$DB_BACKUPSOURCE_PASSWORD -h $DB_BACKUPSOURCE_SERVER --default-character-set=utf8mb4 > $BACKUP_DIR/$DIRNAME$NO/$DB_BACKUPSOURCE_DBNAME.sql
@@ -223,3 +238,8 @@ if (( $CLONE )); then
 else
 	writeToConsole "Backup created and db import tested"
 fi
+
+END_TIME=$(date +%s)
+
+BACKUP_TIME=($(duration $START_TIME $END_TIME))
+writeToConsole "Backuptime: ${BACKUP_TIME[1]}:${BACKUP_TIME[2]}:${BACKUP_TIME[3]}"
