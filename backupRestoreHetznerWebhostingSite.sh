@@ -163,7 +163,7 @@ if [[ -n $LASTNO ]]; then
 	LINKNO=$((NO-1))
 	if [[ -d $BACKUP_DIR/$DIRNAME$LINKNO ]]; then
 		LINKDEST="--link-dest=$BACKUP_DIR/$DIRNAME$LINKNO"
-		writeToConsole "Using $LINKDEST for hardlinks"
+		writeToConsole "Using $BACKUP_DIR/$DIRNAME$LINKNO for hardlinks"
 	fi
 else
 	NO=$INITIAL_NO
