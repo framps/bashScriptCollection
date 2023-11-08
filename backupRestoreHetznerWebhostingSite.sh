@@ -161,7 +161,10 @@ LASTNO=$(find $BACKUP_DIR -name "$DIRNAME*" -type d | sort -t _ -k 2 -n | tail -
 if [[ -n $LASTNO ]]; then
 	NO=$((LASTNO+1))
 	LINKNO=$((NO-1))
-	LINKDEST="--link-dest=$BACKUP_DIR/$DIRNAME$LINKNO"
+	if [[ -d $BACKUP_DIR/$DIRNAME$LINKNO ]]; then
+		LINKDEST="--link-dest=$BACKUP_DIR/$DIRNAME$LINKNO"
+		writeToConsole "Using $LINKDEST for hardlinks"
+	fi
 else
 	NO=$INITIAL_NO
 fi
