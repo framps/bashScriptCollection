@@ -2,8 +2,7 @@
 #
 #######################################################################################################################
 #
-# 	 Create a local backup of a Webhosting website from a Hetzner and
-#	 restore the backup to a restore test website on a Webhosting website from Hetzner
+# 	 Create a local backup of a Webhosting website and restore the backup to a restore test website 
 #
 #	Steps:
 #	1) Create mysqldump of database
