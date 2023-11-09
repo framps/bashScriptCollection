@@ -47,7 +47,7 @@ CONFIGURATION_FILE="configuration.php"
 VERBOSE=""
 
 CLONE=0						# create a local website and db backup and restore website and db"
-MAXBACKUPS=3				
+MAXBACKUPS=3
 REMOTE_WAS_MOUNTED=0		# don't umount remote website if it's already mounted
 TIMING=""
 
@@ -73,6 +73,19 @@ function duration() { # startTime endTime
 		((i++))
 	done
 	echo "${d[@]}"
+}
+
+# return current time
+function timerStart() {
+	local START_TIME=$(date +%s)
+	echo "$START_TIME"
+}
+
+# calculate time difference with passed time and return readable time difference as hh:mm:ss
+function timerEnd() { # starttime
+	local END_TIME=$(date +%s)
+	local BACKUP_TIME=($(duration $1 $END_TIME))
+	echo "${BACKUP_TIME[1]}:${BACKUP_TIME[2]}:${BACKUP_TIME[3]}"
 }
 
 while getopts ':bchv' opt; do
@@ -193,15 +206,21 @@ if [[ ! -d $BACKUP_DIR/$DIRNAME$NO ]]; then
 fi
 trap "cleanup" SIGINT SIGTERM EXIT
 
-START_TIME=$(date +%s)
+START_TIME=$(timerStart)
 
+RUN_TIME=$(timerStart)
 writeToConsole "Dumping DB $DB_BACKUPSOURCE_DBNAME to $BACKUP_DIR/$DIRNAME$NO"
 mysqldump -p $DB_BACKUPSOURCE_DBNAME -u $DB_BACKUPSOURCE_USERID -p$DB_BACKUPSOURCE_PASSWORD -h $DB_BACKUPSOURCE_SERVER --default-character-set=utf8mb4 > $BACKUP_DIR/$DIRNAME$NO/$DB_BACKUPSOURCE_DBNAME.sql
 (( failure=failure || $? )) && ( writeToConsole "DB dump of $DB_BACKUPSOURCE_DBNAME failed"; exit )
+RUN_TIME="$(timerEnd $RUN_TIME)"
+writeToConsole "DB Dumptime: $RUN_TIME"
 
+RUN_TIME=$(timerStart)
 writeToConsole "Restoring DB $DB_RESTORESOURCE_DBNAME from $BACKUP_DIR/$DIRNAME$NO"
 mysql -p $DB_RESTORESOURCE_DBNAME -u $DB_RESTORESOURCE_USERID -p$DB_RESTORESOURCE_PASSWORD -h $DB_RESTORESOURCE_SERVER < $BACKUP_DIR/$DIRNAME$NO/$DB_BACKUPSOURCE_DBNAME.sql
 (( failure=failure || $? )) && ( writeToConsole "Restor of DB dump to $DB_RESTORESOURCE_DBNAME failed"; exit )
+RUN_TIME="$(timerEnd $RUN_TIME)"
+writeToConsole "DB importtime: $RUN_TIME"
 
 if (( $CLONE )); then
 
@@ -212,19 +231,26 @@ if (( $CLONE )); then
 	fi
 	(( $? )) && ( writeToConsole "Error mounting REMOTE_MP"; exit )
 
+	RUN_TIME=$(timerStart)
 	writeToConsole "rsync remote website from $REMOTE_MP/$FS_BACKUP to $BACKUP_DIR/$DIRNAME$NO"
 	rsync -a $VERBOSE --delete --exclude cache/* $LINKDEST $REMOTE_MP/$FS_BACKUP/ $BACKUP_DIR/$DIRNAME$NO/
 	(( failure=failure || $? )) && exit 1
+	RUN_TIME="$(timerEnd $RUN_TIME)"
+	writeToConsole "Website download time: $RUN_TIME"
 
 	if [[ ! -d $REMOTE_MP/$FS_RESTORE ]]; then
 		mkdir $REMOTE_MP/$FS_RESTORE
 		(( $? )) && ( writeToConsole "Error creating directory $REMOTE_MP/$FS_RESTORE"; exit )
 	fi
 
+	RUN_TIME=$(timerStart)
 	writeToConsole "rsync local website from $BACKUP_DIR/$DIRNAME$NO to $FS_RESTORE"
 	rsync -a $VERBOSE --delete --exclude $DB_BACKUPSOURCE_DBNAME.sql $BACKUP_DIR/$DIRNAME$NO/ $REMOTE_MP/$FS_RESTORE
 	(( failure=failure || $? )) && exit 1
+	RUN_TIME="$(timerEnd $RUN_TIME)"
+	writeToConsole "Website upload time: $RUN_TIME"
 
+	RUN_TIME=$(timerStart)
 	writeToConsole "Updating $CONFIGURATION_FILE"
 	sed -i "s/public \$host =.*;/public \$host = '$DB_RESTORESOURCE_SERVER';/" $REMOTE_MP/$FS_RESTORE/$CONFIGURATION_FILE
 	(( failure=failure || $? )) && ( writeToConsole "Error updating host"; exit 1 )
@@ -236,13 +262,13 @@ if (( $CLONE )); then
 	(( failure=failure || $? )) && ( writeToConsole "Error updating db"; exit 1 )
 	sed -i "s@public \$live_site =.*;@public \$live_site = '$BACKUP_URL';@" $REMOTE_MP/$FS_RESTORE/$CONFIGURATION_FILE
 	(( failure=failure || $? )) && ( writeToConsole "Error updating live_site"; exit 1 )
+	RUN_TIME="$(timerEnd $RUN_TIME)"
+	writeToConsole "Website config update time: $RUN_TIME"
 
 	writeToConsole "Backup created, db import tested and website cloned"
 else
 	writeToConsole "Backup created and db import tested"
 fi
 
-END_TIME=$(date +%s)
-
-BACKUP_TIME=($(duration $START_TIME $END_TIME))
-writeToConsole "Backuptime: ${BACKUP_TIME[1]}:${BACKUP_TIME[2]}:${BACKUP_TIME[3]}"
+BACKUP_TIME="$(timerEnd $START_TIME)"
+writeToConsole "BackupRestoreTestTime: $BACKUP_TIME"
