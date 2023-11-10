@@ -56,20 +56,20 @@ function isMounted() { # dir
 }
 
 function writeToConsole() {
-	echo "===> $@"
+	echo "$(date +%H:%M.%S): $@"
 }
 
 # calculate time difference, return array with days, hours, minutes and seconds
 function duration() { # startTime endTime
-	factors=(86400 3600 60 1)
-	local diff=$(( $2 - $1 ))
-	local d i q
+	local d i q FACTORS diff
+	FACTORS=(86400 3600 60 1)
+	(( diff = $2 - $1 ))
 	i=0
-	for f in "${factors[@]}"; do
-		q=$(( diff / f ))
-		diff=$(( diff - q * f ))
+	for f in "${FACTORS[@]}"; do
+		(( q = diff / f ))
+		(( diff = diff - q * f ))
 		d[i]=$(printf "%02d" $q)
-		((i++))
+		(( i++ ))
 	done
 	echo "${d[@]}"
 }
@@ -171,11 +171,10 @@ LASTNO=$(find $BACKUP_DIR -name "$DIRNAME*" -type d | sort -t _ -k 2 -n | tail -
 
 # create next backup dir
 if [[ -n $LASTNO ]]; then
-	NO=$((LASTNO+1))
-	LINKNO=$((NO-1))
+	(( NO = LASTNO + 1 ))
+	(( LINKNO = NO - 1 ))
 	if [[ -d $BACKUP_DIR/$DIRNAME$LINKNO ]]; then
 		LINKDEST="--link-dest=$BACKUP_DIR/$DIRNAME$LINKNO"
-		writeToConsole "Using $BACKUP_DIR/$DIRNAME$LINKNO for hardlinks"
 	fi
 else
 	NO=$INITIAL_NO
@@ -232,6 +231,9 @@ if (( $CLONE )); then
 
 	RUN_TIME=$(timerStart)
 	writeToConsole "rsync remote website from $REMOTE_MP/$FS_BACKUP to $BACKUP_DIR/$DIRNAME$NO"
+	if [[ -n $LINKDEST ]]; then
+		writeToConsole "Using $BACKUP_DIR/$DIRNAME$LINKNO for hardlinks"
+	fi
 	rsync -a $VERBOSE --delete --exclude cache/* $LINKDEST $REMOTE_MP/$FS_BACKUP/ $BACKUP_DIR/$DIRNAME$NO/
 	(( failure=failure || $? )) && exit 1
 	RUN_TIME="$(timerEnd $RUN_TIME)"
