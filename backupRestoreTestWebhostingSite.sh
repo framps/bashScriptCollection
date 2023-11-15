@@ -227,7 +227,7 @@ if (( $CLONE )); then
 	else
 		REMOTE_WAS_MOUNTED=1
 	fi
-	(( $? )) && { writeToConsole "Error mounting REMOTE_MP"; exit 1 }
+	(( $? )) && { writeToConsole "Error mounting REMOTE_MP"; exit 1; }
 
 	RUN_TIME=$(timerStart)
 	writeToConsole "rsync remote website from $REMOTE_MP/$FS_BACKUP to $BACKUP_DIR/$DIRNAME$NO"
