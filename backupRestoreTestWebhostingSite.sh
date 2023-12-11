@@ -2,7 +2,7 @@
 #
 #######################################################################################################################
 #
-# 	 Create a local backup of a Webhosting website and restore the backup to a restore test website
+# 	Create a local backup of a Webhosting website and restore the backup to a restore test website
 #
 #	Steps:
 #	1) Create mysqldump of database
@@ -45,10 +45,11 @@ CONFIGURATION_FILE="configuration.php"
 # defaults
 VERBOSE=""
 
-CLONE=0						# create a local website and db backup and restore website and db"
+CLONE=1						# create a local website and db backup and restore website and db"
 MAXBACKUPS=3
 REMOTE_WAS_MOUNTED=0		# don't umount remote website if it's already mounted
 TIMING=""
+CONFIG_PATH="/usr/local/etc/"
 
 function isMounted() { # dir
 	grep -qs "$1" /proc/mounts
@@ -99,7 +100,7 @@ while getopts ':bchv' opt; do
       ;;
 
     c)
-		CLONE=1
+		CLONE=0
       ;;
 
     v)
@@ -129,8 +130,8 @@ if (( $UID != 0 )); then
 	exit 1
 fi
 
-if [[ -e ./$MYNAME.conf ]]; then
-	source ./$MYNAME.conf						# use config file for following config variables
+if [[ -e $CONFIG_PATH/$MYNAME.conf ]]; then
+	source $CONFIG_PATH/$MYNAME.conf						# use config file for following config variables
 else 											# hard code config variables
 	# Backup directory
 	BACKUP_DIR="~"
