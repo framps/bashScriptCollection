@@ -217,7 +217,7 @@ writeToConsole "DB Dumptime: $RUN_TIME"
 RUN_TIME=$(timerStart)
 writeToConsole "Restoring DB $DB_RESTORESOURCE_DBNAME from $BACKUP_DIR/$DIRNAME$NO"
 mysql -p $DB_RESTORESOURCE_DBNAME -u $DB_RESTORESOURCE_USERID -p$DB_RESTORESOURCE_PASSWORD -h $DB_RESTORESOURCE_SERVER < $BACKUP_DIR/$DIRNAME$NO/$DB_BACKUPSOURCE_DBNAME.sql
-(( failure=failure || $? )) && { writeToConsole "Restor of DB dump to $DB_RESTORESOURCE_DBNAME failed"; exit 1; }
+(( failure=failure || $? )) && { writeToConsole "Restore of DB dump to $DB_RESTORESOURCE_DBNAME failed"; exit 1; }
 RUN_TIME="$(timerEnd $RUN_TIME)"
 writeToConsole "DB importtime: $RUN_TIME"
 
