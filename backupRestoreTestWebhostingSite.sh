@@ -235,7 +235,7 @@ if (( $CLONE )); then
 	if [[ -n $LINKDEST ]]; then
 		writeToConsole "Using $BACKUP_DIR/$DIRNAME$LINKNO for hardlinks"
 	fi
-	rsync -a $VERBOSE --delete --exclude cache/* $LINKDEST $REMOTE_MP/$FS_BACKUP/ $BACKUP_DIR/$DIRNAME$NO/
+	rsync -a $VERBOSE --exclude cache/* $LINKDEST $REMOTE_MP/$FS_BACKUP/ $BACKUP_DIR/$DIRNAME$NO/
 	(( failure=failure || $? )) && exit 1
 	RUN_TIME="$(timerEnd $RUN_TIME)"
 	writeToConsole "Website download time: $RUN_TIME"
