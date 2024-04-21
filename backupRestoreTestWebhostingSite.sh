@@ -20,7 +20,7 @@
 #
 #######################################################################################################################
 #
-#    Copyright (c) 2023 framp at linux-tips-and-tricks dot de
+#    Copyright (c) 2024 framp at linux-tips-and-tricks dot de
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -36,6 +36,8 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 #######################################################################################################################
+
+set -uo pipefail
 
 MYSELF="$(basename "$(test -L "$0" && readlink "$0" || echo "$0")")"
 MYNAME=${MYSELF%.*}
@@ -130,8 +132,10 @@ if (( $UID != 0 )); then
 	exit 1
 fi
 
-if [[ -e $CONFIG_PATH/$MYNAME.conf ]]; then
-	source $CONFIG_PATH/$MYNAME.conf						# use config file for following config variables
+if [[ -e $MYNAME.conf ]]; then
+	source $MYNAME.conf							# use config file for following config variables
+elif [[ -e $CONFIG_PATH/$MYNAME.conf ]]; then
+	source $CONFIG_PATH/$MYNAME.conf			# use config file for following config variables
 else 											# hard code config variables
 	# Backup directory
 	BACKUP_DIR="~"
@@ -225,6 +229,7 @@ if (( $CLONE )); then
 
 	if ! isMounted $REMOTE_MP; then
 		mount $REMOTE_MP
+		(( $? )) && { writeToConsole "Error mounting $REMOTE_MP"; exit 1; }
 	else
 		REMOTE_WAS_MOUNTED=1
 	fi
@@ -236,7 +241,7 @@ if (( $CLONE )); then
 		writeToConsole "Using $BACKUP_DIR/$DIRNAME$LINKNO for hardlinks"
 	fi
 	rsync -a $VERBOSE --exclude cache/* $LINKDEST $REMOTE_MP/$FS_BACKUP/ $BACKUP_DIR/$DIRNAME$NO/
-	(( failure=failure || $? )) && exit 1
+	(( failure=failure || $? )) && { writeToConsole "rsync down failed"; exit 1; }
 	RUN_TIME="$(timerEnd $RUN_TIME)"
 	writeToConsole "Website download time: $RUN_TIME"
 
@@ -248,7 +253,7 @@ if (( $CLONE )); then
 	RUN_TIME=$(timerStart)
 	writeToConsole "rsync local website from $BACKUP_DIR/$DIRNAME$NO to $FS_RESTORE"
 	rsync -a $VERBOSE --delete --exclude $DB_BACKUPSOURCE_DBNAME.sql $BACKUP_DIR/$DIRNAME$NO/ $REMOTE_MP/$FS_RESTORE
-	(( failure=failure || $? )) && exit 1
+	(( failure=failure || $? )) && { writeToConsole "rsync up failed"; exit 1; }
 	RUN_TIME="$(timerEnd $RUN_TIME)"
 	writeToConsole "Website upload time: $RUN_TIME"
 
