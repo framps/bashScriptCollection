@@ -13,3 +13,4 @@ A collection of bashscripts I wrote which may or may not be useful for others :-
 8. relaySMS.sh - Tiny SMS relay server script which reads all SMS received with gammu-smsd and forwards them to another phonenumber or sends them to an email or tiggers any other activity
 9. units.sh - Converts a number in gibibits. Example: 1024 -> 1K, 1073741825 -> 1T
 10. watchFileChange.sh - Watch a file for any changes and start actions if file changes
+11. findExistingISM7MQTTparameters.sh - Helperscript for ism7mqtt (https://github.com/zivillian/ism7mqtt) which helps to find ptids which match a given search string
