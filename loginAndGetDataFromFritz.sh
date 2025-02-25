@@ -1,9 +1,11 @@
 #!/bin/bash
-
+#
 #######################################################################################################################
 #
-#    bash prototype which logs on to a Fritz AVM 7590 and
-#    extracts the temperature of an dect200
+#    bash prototype which logs on to a Fritz AVM 7590 and executes som command against dect200
+#	 1) retrieves temperature
+#	 2) retrieves energy used
+#	 3) Turn switch on or off or queries the switch state
 #
 #    Visit https://github.com/framps/bashScriptCollection for latest code and other details
 #
@@ -27,9 +29,21 @@
 #######################################################################################################################
 
 SERVER="http://192.168.172.1"
-USER="user"
-PASSWORD="password"
-AIN="ain"
+USER="dect200"
+PASSWORD="dect200"
+AIN="471147114711"
+
+if (( $# < 1 )) || [[ ! $1 =~ ^(temp|energy|on|off|state)$ ]]; then
+	(( $# < 1 )) && c="Missing" || c="Expected"
+	echo "$c command temp, energy, on or off or state"
+	exit 42
+fi		
+
+cmd="$1"
+
+function executeRequest() {
+	echo "$(curl -s -k ${SERVER}'/webservices/homeautoswitch.lua?ain='${AIN}'&sid='${sidRsp}'&switchcmd='${1})"
+}	
 
 challengeRsp=$(curl --header "Accept: application/xml" \
 	--header "Content-Type: text/plain"		\
@@ -49,10 +63,28 @@ sidRsp=$(curl -i -s -k -d "response=${response}&username=${USER}" "$SERVER/login
 
 regex="^0+$"
 if [[ $sidRsp =~ $regex || -z "$sidRsp" ]]; then
-	echo "Invalid password"
+	echo "Invalid userid or password"
 	exit 0
 fi
 
-tempNum=$(curl -s -k ${SERVER}'/webservices/homeautoswitch.lua?ain='${AIN}'&sid='${sidRsp}'&switchcmd=gettemperature')
-tempDegree=$(echo $tempNum | sed 's/\B[0-9]\{1\}\>/,&/')
-echo "DECT200 measures $tempDegree °C"
+case $cmd in
+
+	temp) tempNum="$(executeRequest "gettemperature")"
+		tempDegree=$(echo $tempNum | sed 's/\B[0-9]\{1\}\>/\.&/')
+		echo "DECT200 measures ${tempDegree}°C"
+		;;
+	on|off) state="$(executeRequest "setswitch$cmd")"
+		stateWord=$([ "$state" == 0 ] && echo "off" || echo "on")
+		echo "DECT200 switched $stateWord"
+		;;
+	state) state="$(executeRequest "getswitchstate")"
+		stateWord=$([ "$state" == 0 ] && echo "off" || echo "on")
+		echo "DECT200 switch is $stateWord"
+		;;
+	energy) energyNum="$(executeRequest "getswitchenergy")"
+		echo "DECT200 measures $energyNum Wh"
+		;;
+	*) echo "Internal error"
+		exit 42
+esac	
+
