@@ -1,6 +1,7 @@
 #!/bin/bash
-#
-# POC to verify it's possible to remove a disk from a RAID5 and not to force a RAID rebuild with a Raspberry
+
+# POC to verify it's possible to remove a disk from a RAID5 and not to force a RAID rebuild to prove it will work on a pure Linux.
+# Given I have no spare synology NAS to test this on DSM that's how I verified it may work also on a Synology running DSM.
 #
 # Setup: Three devices with 3 partitions. md0 and md1 use partitions 1 and 2 as a RAID1. Partition3 is used in a RAID5.
 #
