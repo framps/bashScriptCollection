@@ -25,28 +25,25 @@
 
 function convertToMetric() { # number
 
-	local DIM=(" " K M G T P)
-	local r=$1
+    local DIM=(" " K M G T P)
+    local r=$1
 
-	while (( $r >= 1024 )); do
-		(( r=$r/1024 ))
-		(( m=m+1 ))
-		if (( $m >= ${#DIM[@]} )); then
-			echo "??? Number $1 too big"
-			exit 127
-		fi
-	done
-	echo $r${DIM[$m]}
+    while (($r >= 1024)); do
+        ((r = $r / 1024))
+        ((m = m + 1))
+        if (($m >= ${#DIM[@]})); then
+            echo "??? Number $1 too big"
+            exit 127
+        fi
+    done
+    echo $r${DIM[$m]}
 
 }
 
-if (( "$#" == 1 )) ; then
-	echo $(convertToMetric $1)
+if (("$#" == 1)); then
+    echo $(convertToMetric $1)
 else
-	for n in 10 1024 1024*1024+1 1024*1024*1024+1 1024*1024*1024*1024+1 1024*1024*1024*1024*1024+1 1024*1024*1024*1024*1024*1024+1; do
-		echo "Number: $(( $n )) - metric: $(convertToMetric $(($n)))"
-	done
+    for n in 10 1024 1024*1024+1 1024*1024*1024+1 1024*1024*1024*1024+1 1024*1024*1024*1024*1024+1 1024*1024*1024*1024*1024*1024+1; do
+        echo "Number: $(($n)) - metric: $(convertToMetric $(($n)))"
+    done
 fi
-
-
-

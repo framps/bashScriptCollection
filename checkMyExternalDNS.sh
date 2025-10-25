@@ -31,12 +31,12 @@ MYCONFIG="/usr/local/etc/$MYNAME.conf"
 LOG="/var/log/${MYNAME}.log"
 
 if [[ ! -f $MYCONFIG ]]; then
-	echo "Config file $MYCONFIG not found. Using hard coded values"
+    echo "Config file $MYCONFIG not found. Using hard coded values"
 else
-	EXTERNAL_NAME="myName.ddns.org"		# external DYNDNS name
-	USERNAME="user@ddns.org"		# DYNDNS username 
-	PWD="myVerySecurePassword"		# DYNDNS password
-	DDNS_URL="ddns.org/update"		# DNYDNS URL to update the registered IP
+    EXTERNAL_NAME="myName.ddns.org" # external DYNDNS name
+    USERNAME="user@ddns.org"        # DYNDNS username
+    PWD="myVerySecurePassword"      # DYNDNS password
+    DDNS_URL="ddns.org/update"      # DNYDNS URL to update the registered IP
 fi
 
 source $MYCONFIG
@@ -50,39 +50,39 @@ UPDATE_INTERVAL=60 # seconds
 touch $STATE_FILE
 lastRun=$(< $STATE_FILE)
 
-if [[ -z $lastRun ]] || (( "$lastRun" < "$STATE_NOW" )); then
+if [[ -z $lastRun ]] || (("$lastRun" < "$STATE_NOW")); then
 
-        myExternalIP="$(dig +short myip.opendns.com @resolver1.opendns.com)"
-        externalNameIP="$(getent hosts $EXTERNAL_NAME | cut -f 1 -d " ")"
+    myExternalIP="$(dig +short myip.opendns.com @resolver1.opendns.com)"
+    externalNameIP="$(getent hosts $EXTERNAL_NAME | cut -f 1 -d " ")"
 
-        success=0
-        if [[ "$myExternalIP" != "$externalNameIP" ]]; then
-                for (( i=0; i<=$UPDATE_RETRY; i++)); do
-                        echo "$NOW: Update request $i from $externalNameIP to $myExternalIP" >> $LOG 
-                        curl -s "$DDNS_URL?hostname=$EXTERNAL_NAME&myip=$myExternalIP&user=$USERNAME&pass=$PWD"
-                        if (( $? )); then
-                                echo "$NOW: Update request $i failed" >> $LOG
-                                if (( $i != $UPDATE_RETRY )); then
-                                        sleep ${UPDATE_INTERVAL}s
-                                        NOW=$(date)
-                                else
-                                        break
-                                fi
-                        else
-                                success=1
-                                break
-                        fi
-                done
-                if (( $success )); then
-                        echo "$NOW: IP OK $externalNameIP - $myExternalIP" >> $LOG 
-                        echo "$STATE_NOW" > $STATE_FILE
+    success=0
+    if [[ "$myExternalIP" != "$externalNameIP" ]]; then
+        for ((i = 0; i <= $UPDATE_RETRY; i++)); do
+            echo "$NOW: Update request $i from $externalNameIP to $myExternalIP" >> $LOG
+            curl -s "$DDNS_URL?hostname=$EXTERNAL_NAME&myip=$myExternalIP&user=$USERNAME&pass=$PWD"
+            if (($?)); then
+                echo "$NOW: Update request $i failed" >> $LOG
+                if (($i != $UPDATE_RETRY)); then
+                    sleep ${UPDATE_INTERVAL}s
+                    NOW=$(date)
                 else
-                        echo "$NOW: IP update failed from $externalNameIP to $myExternalIP" >> $LOG 
+                    break
                 fi
+            else
+                success=1
+                break
+            fi
+        done
+        if (($success)); then
+            echo "$NOW: IP OK $externalNameIP - $myExternalIP" >> $LOG
+            echo "$STATE_NOW" > $STATE_FILE
         else
-                echo "$NOW: IP OK $externalNameIP - $myExternalIP" >> $LOG 
-                echo "$STATE_NOW" > $STATE_FILE
-        fi      
+            echo "$NOW: IP update failed from $externalNameIP to $myExternalIP" >> $LOG
+        fi
+    else
+        echo "$NOW: IP OK $externalNameIP - $myExternalIP" >> $LOG
+        echo "$STATE_NOW" > $STATE_FILE
+    fi
 else
-        : echo "$NOW: Skipped" >> $LOG 
-fi        
+    : echo "$NOW: Skipped" >> $LOG
+fi

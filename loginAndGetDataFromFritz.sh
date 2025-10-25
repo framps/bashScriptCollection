@@ -33,27 +33,27 @@ USER="dect200"
 PASSWORD="dect200"
 AIN="471147114711"
 
-if (( $# < 1 )) || [[ ! $1 =~ ^(temp|energy|on|off|state)$ ]]; then
-	(( $# < 1 )) && c="Missing" || c="Expected"
-	echo "$c command temp, energy, on or off or state"
-	exit 42
-fi		
+if (($# < 1)) || [[ ! $1 =~ ^(temp|energy|on|off|state)$ ]]; then
+    (($# < 1)) && c="Missing" || c="Expected"
+    echo "$c command temp, energy, on or off or state"
+    exit 42
+fi
 
 cmd="$1"
 
 function executeRequest() {
-	echo "$(curl -s -k ${SERVER}'/webservices/homeautoswitch.lua?ain='${AIN}'&sid='${sidRsp}'&switchcmd='${1})"
-}	
+    echo "$(curl -s -k ${SERVER}'/webservices/homeautoswitch.lua?ain='${AIN}'&sid='${sidRsp}'&switchcmd='${1})"
+}
 
 challengeRsp=$(curl --header "Accept: application/xml" \
-	--header "Content-Type: text/plain"		\
-	"$SERVER/login_sid.lua" 2>/dev/null)
+    --header "Content-Type: text/plain" \
+    "$SERVER/login_sid.lua" 2> /dev/null)
 
 challenge=$(echo $challengeRsp | sed "s/^.*<Challenge>//" | sed "s/<\/Challenge>.*$//")
 
 if [[ -z $challenge ]]; then
-	echo "No challenge received"
-	exit 0
+    echo "No challenge received"
+    exit 0
 fi
 
 md5=$(echo -n "$challenge-$PASSWORD" | iconv -t UTF-16LE | md5sum - | cut -c 1-32)
@@ -63,28 +63,33 @@ sidRsp=$(curl -i -s -k -d "response=${response}&username=${USER}" "$SERVER/login
 
 regex="^0+$"
 if [[ $sidRsp =~ $regex || -z "$sidRsp" ]]; then
-	echo "Invalid userid or password"
-	exit 0
+    echo "Invalid userid or password"
+    exit 0
 fi
 
 case $cmd in
 
-	temp) tempNum="$(executeRequest "gettemperature")"
-		tempDegree=$(echo $tempNum | sed 's/\B[0-9]\{1\}\>/\.&/')
-		echo "DECT200 measures ${tempDegree}°C"
-		;;
-	on|off) state="$(executeRequest "setswitch$cmd")"
-		stateWord=$([ "$state" == 0 ] && echo "off" || echo "on")
-		echo "DECT200 switched $stateWord"
-		;;
-	state) state="$(executeRequest "getswitchstate")"
-		stateWord=$([ "$state" == 0 ] && echo "off" || echo "on")
-		echo "DECT200 switch is $stateWord"
-		;;
-	energy) energyNum="$(executeRequest "getswitchenergy")"
-		echo "DECT200 measures $energyNum Wh"
-		;;
-	*) echo "Internal error"
-		exit 42
-esac	
-
+    temp)
+        tempNum="$(executeRequest "gettemperature")"
+        tempDegree=$(echo $tempNum | sed 's/\B[0-9]\{1\}\>/\.&/')
+        echo "DECT200 measures ${tempDegree}°C"
+        ;;
+    on | off)
+        state="$(executeRequest "setswitch$cmd")"
+        stateWord=$([ "$state" == 0 ] && echo "off" || echo "on")
+        echo "DECT200 switched $stateWord"
+        ;;
+    state)
+        state="$(executeRequest "getswitchstate")"
+        stateWord=$([ "$state" == 0 ] && echo "off" || echo "on")
+        echo "DECT200 switch is $stateWord"
+        ;;
+    energy)
+        energyNum="$(executeRequest "getswitchenergy")"
+        echo "DECT200 measures $energyNum Wh"
+        ;;
+    *)
+        echo "Internal error"
+        exit 42
+        ;;
+esac

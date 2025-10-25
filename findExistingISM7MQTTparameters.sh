@@ -32,10 +32,10 @@ readonly MYSELF="$(basename "$(test -L "$0" && readlink "$0" || echo "$0")")"
 readonly MYNAME=${MYSELF%.*}
 
 readonly VERSION="v0.1"
-readonly GITREPO="https://github.com/framps/bashScriptCollection"	
+readonly GITREPO="https://github.com/framps/bashScriptCollection"
 
 function usage() {
-   cat <<- EOF
+    cat <<- EOF
 $MYSELF $VERSION ($GITREPO)
 
 Search for ism7mqtt ptids which are in parameter.json.
@@ -51,9 +51,9 @@ Default for parameter_json_filename is parameter.json
 EOF
 }
 
-if (( $# < 1 )); then
-   usage
-   exit 1
+if (($# < 1)); then
+    usage
+    exit 1
 fi
 
 readonly name="$1"
@@ -65,19 +65,19 @@ echo "$MYSELF $VERSION ($GITREPO)"
 
 l=0
 
-readonly usedFiles=( $parameterJSON $parameterXML $deviceXML )
+readonly usedFiles=($parameterJSON $parameterXML $deviceXML)
 
 for file in "${usedFiles[@]}"; do
-	if [[ ! -e $file ]]; then
-		echo "$file not found"
-		exit 1
-	fi
+    if [[ ! -e $file ]]; then
+        echo "$file not found"
+        exit 1
+    fi
 done
 
-if ! which xmllint &>/dev/null; then
-	echo "Please install xmllint first (package libxml2-utils)"
-	exit 1
-fi	
+if ! which xmllint &> /dev/null; then
+    echo "Please install xmllint first (package libxml2-utils)"
+    exit 1
+fi
 
 while read -r line; do
 
@@ -85,42 +85,44 @@ while read -r line; do
 
         #echo "@@@ $l: $line"
         case $l in
-            0) if [[ "$line" =~ PTID=\"([^\"]+) ]]; then
+            0)
+                if [[ "$line" =~ PTID=\"([^\"]+) ]]; then
                     ptid="${BASH_REMATCH[1]}"
                 else
                     echo "error1"
                     exit 1
                 fi
-                 ;;
+                ;;
 
-            1) if [[ "$line" =~ \<Name\>([^\<]+)\<\/Name\> ]]; then
-                   ptid_name="${BASH_REMATCH[1]}"
+            1)
+                if [[ "$line" =~ \<Name\>([^\<]+)\<\/Name\> ]]; then
+                    ptid_name="${BASH_REMATCH[1]}"
                 else
                     echo "error2"
                     exit 1
                 fi
-               ;;
-            *) echo "error3"
-               ;;
+                ;;
+            *)
+                echo "error3"
+                ;;
         esac
     fi
 
     set +e
-    l=$(( (l+1)%3 ))
+    l=$(((l + 1) % 3))
     set -e
 
-    if (( $l == 2 )); then
+    if (($l == 2)); then
         set +e
         ptidJSON="$(grep -o " $ptid" $parameterJSON)"
         # dtid="$(jq -e ".Devices[] | select(.Parameter[] == ${ptid}).DeviceTemplateId" $parameterJSON)" # ... inefficient for huge parameter.json :-(
-        found=$(( ! $? ))        
+        found=$((!$?))
         set -e
-        if (( $found )); then
-			device=$(xmllint --xpath "string(/DeviceTemplateConfig/DeviceTemplates/DeviceTemplate/ParameterReferenceList/ParameterReference[@PTID=${ptid}]/../../@Name)" $deviceXML)
+        if (($found)); then
+            device=$(xmllint --xpath "string(/DeviceTemplateConfig/DeviceTemplates/DeviceTemplate/ParameterReferenceList/ParameterReference[@PTID=${ptid}]/../../@Name)" $deviceXML)
             echo ">>> \"$ptid_name\": $device - $ptid"
         else
             : echo "    \"$ptid_name\": $ptid"
         fi
-     fi
+    fi
 done < <(grep -i -B 1 "<Name>.*${name}.*</Name>" $parameterXML)
-

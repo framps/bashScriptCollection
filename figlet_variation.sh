@@ -24,12 +24,12 @@
 #######################################################################################################################
 
 if [[ -z $1 ]]; then
-	echo "Missing parameter text"
-	exit
+    echo "Missing parameter text"
+    exit
 fi
 
 for font in /usr/share/figlet/*.*lf; do
-   f=$(basename $font)
-   echo "### $f ###"
-   figlet -f $f -k -c -w 130 $1
+    f=$(basename $font)
+    echo "### $f ###"
+    figlet -f $f -k -c -w 130 $1
 done

@@ -38,67 +38,66 @@ SERVER_NAME="SMSRelay"
 LOG="/var/log/$MYNAME.log"
 NOTIFY_TARGET=1
 NOTIFY_ADMIN=2
-NOTIFY_BOTH=$(( $NOTIFY_TARGET | $NOTIFY_ADMIN ))
+NOTIFY_BOTH=$(($NOTIFY_TARGET | $NOTIFY_ADMIN))
 
 function send() { # rcv subject message
-	#echo "$3" | gammu-smsd-inject TEXT $TARGET_PHONE
-	if (( $1 & $NOTIFY_TARGET )); then
-		echo "--- relay sms to target $EMAIL_TARGET"	
-	   echo "$3" | mail -s "$SERVER_NAME: $2" $EMAIL_TARGET 
-	fi
+    #echo "$3" | gammu-smsd-inject TEXT $TARGET_PHONE
+    if (($1 & $NOTIFY_TARGET)); then
+        echo "--- relay sms to target $EMAIL_TARGET"
+        echo "$3" | mail -s "$SERVER_NAME: $2" $EMAIL_TARGET
+    fi
 
-	if (( $1 & $NOTIFY_ADMIN )); then
-		echo "--- relay sms to admin $EMAIL_ADMIN"	
-	   echo "$3" | mail -s "$SERVER_NAME: $2" $EMAIL_ADMIN
-	fi
+    if (($1 & $NOTIFY_ADMIN)); then
+        echo "--- relay sms to admin $EMAIL_ADMIN"
+        echo "$3" | mail -s "$SERVER_NAME: $2" $EMAIL_ADMIN
+    fi
 }
 
 function handleSMS() { # number msg
 
-	local number="$1"
-	local msg="$2"
+    local number="$1"
+    local msg="$2"
 
-	case "$msg" in
-		*\*echo*)
-			echoMessage="$(cut -f 2- -d ' ' <<< "$msg")"
-		   echo "--- echo"	
-			send $NOTIFY_ADMIN "*echo command received" "$echoMessage"
-			;;	
-		*\*status*)
-		   echo "--- status"	
-			send $NOTIFY_ADMIN "*status command received"
-			;;
-		*\*help*)
-		   echo "--- help"	
-			send $NOTIFY_ADMIN "*help command received" "*echo MESSAGE, *status, *restart, *cancel"
-			;;
-		*\*restart*)
-		   echo "--- restart"	
-		 	send $NOTIFY_ADMIN "*restart command received" "SMS relay server will be restarted soon" 
-			sleep 1m
-			systemctl restart gammu-smsd
-			;;
-		*\*cancel*)
-		   echo "--- cancel"	
-		 	send $NOTIFY_ADMIN "*cancel command received" "SMS relay server will be stopped soon" 
-			sleep 1m
-			systemctl stop gammu-smsd
-			exit 0
-			;;
-	 	*) 
-		   echo "--- default"	
-	  		send $NOTIFY_BOTH "SMS received from $number" "$msg" 
-			;;
-	esac
- }
+    case "$msg" in
+        *\*echo*)
+            echoMessage="$(cut -f 2- -d ' ' <<< "$msg")"
+            echo "--- echo"
+            send $NOTIFY_ADMIN "*echo command received" "$echoMessage"
+            ;;
+        *\*status*)
+            echo "--- status"
+            send $NOTIFY_ADMIN "*status command received"
+            ;;
+        *\*help*)
+            echo "--- help"
+            send $NOTIFY_ADMIN "*help command received" "*echo MESSAGE, *status, *restart, *cancel"
+            ;;
+        *\*restart*)
+            echo "--- restart"
+            send $NOTIFY_ADMIN "*restart command received" "SMS relay server will be restarted soon"
+            sleep 1m
+            systemctl restart gammu-smsd
+            ;;
+        *\*cancel*)
+            echo "--- cancel"
+            send $NOTIFY_ADMIN "*cancel command received" "SMS relay server will be stopped soon"
+            sleep 1m
+            systemctl stop gammu-smsd
+            exit 0
+            ;;
+        *)
+            echo "--- default"
+            send $NOTIFY_BOTH "SMS received from $number" "$msg"
+            ;;
+    esac
+}
 
 for i in $SMS_MESSAGES; do
-	echo "Processing $i: $1"
-   number="SMS_${i}_NUMBER"	
-	echo "SMS_NUMBER: ${!number}"
-   text="SMS_${i}_TEXT"	
-	echo "SMS_TEXT: ${!text}"
-	echo "$(date +"%Y%m%d-%H%M%S") SMS '$1' received"
-	handleSMS "${!number}" "${!text}" 
+    echo "Processing $i: $1"
+    number="SMS_${i}_NUMBER"
+    echo "SMS_NUMBER: ${!number}"
+    text="SMS_${i}_TEXT"
+    echo "SMS_TEXT: ${!text}"
+    echo "$(date +"%Y%m%d-%H%M%S") SMS '$1' received"
+    handleSMS "${!number}" "${!text}"
 done
-
