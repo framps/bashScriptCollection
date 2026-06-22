@@ -14,3 +14,4 @@ A collection of bashscripts I wrote which may or may not be useful for others :-
 9. units.sh - Converts a number in gibibits. Example: 1024 -> 1K, 1073741825 -> 1T
 10. watchFileChange.sh - Watch a file for any changes and start actions if file changes
 11. findExistingISM7MQTTparameters.sh - Helperscript for ism7mqtt (https://github.com/zivillian/ism7mqtt) which helps to find ptids which match a given search string
+12. watchGithubChanges.sh - Check for any updates in github for repository forks, subscribers and stars and send a eMail about the changes
